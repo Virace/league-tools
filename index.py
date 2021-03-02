@@ -146,7 +146,7 @@ def extract_audio(bin_file, event_file, audio_file, out_dir, ext=None, vgmstream
     :return:
     """
     if ext and ext != 'wem' and not vgmstream_cli:
-        raise Exception('如需转码需要提供 vgmstream_cli 参数.')
+        raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
 
     b1 = BIN(bin_file)
     read_strings = b1.hash_tables.copy()

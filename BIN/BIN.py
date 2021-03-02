@@ -42,7 +42,7 @@ class BIN(SectionNoId):
 
     def _read(self):
         if self._data.customize('4s') != self.head:
-            raise Exception('文件类型错误.')
+            raise ValueError('文件类型错误.')
         self.hash_tables = []
         while not self._data.is_end():
             if self._data.find(self.signature) != -1:

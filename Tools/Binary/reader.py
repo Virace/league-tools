@@ -83,6 +83,7 @@ class BinaryReader:
         :return:
         """
         self.buffer.read(lenght)
+        return self.buffer.tell()
 
     def seek(self, offset: int, whence: int = 1):
         """
@@ -127,5 +128,6 @@ class BinaryReader:
         return self.buffer.tell() == self.end
 
     def __del__(self):
-        self.buffer.close()
+        if self.buffer:
+            self.buffer.close()
 
