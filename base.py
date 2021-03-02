@@ -73,16 +73,16 @@ class WemFile:
 
         file, ext = os.path.splitext(path)
         wem_path = f'{file}.wem'
-        with open(wem_path, 'wb+' if bool else 'wb') as f:
+        with open(wem_path, 'wb+') as f:
             f.write(self.data)
 
         if ext != '.wem':
             if vgmstream_cli:
                 subprocess.run([
                     vgmstream_cli,
-                    f'"{wem_path}"',
+                    f'{wem_path}',
                     '-o'
-                    f'"{path}"'
+                    f'{path}'
                 ],
                     stdout=subprocess.DEVNULL,
                     timeout=999999999
