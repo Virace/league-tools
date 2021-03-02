@@ -15,6 +15,8 @@
 
 index.py 中 extract_audio 函数逻辑以及bnk文件HIRC中部分块结构和WPK文件结构参考 https://github.com/Morilli/bnk-extract
 
+其余bnk文件结构来参考:[http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)](http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk))
+
 
 ### 安装
 
