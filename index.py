@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/2/27 18:28
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
-# @Detail  :
+# @Create  : 2021/2/27 18:28
+# @Update  : 2021/3/3 20:12
+# @Detail  : 
+
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import os
@@ -20,6 +22,13 @@ logging.getLogger('Tools.Binary.reader').setLevel(logging.INFO)
 
 
 def obj_find_one(obj, key, value):
+    """
+    查询对象数组中key属性等于value的对象
+    :param obj: 对象数组
+    :param key: 对象属性名
+    :param value: 要查找的属性值
+    :return:
+    """
     for item in obj:
         if getattr(item, key) == value:
             return item
@@ -135,7 +144,7 @@ def get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Strin
 
 def extract_audio(bin_file, event_file, audio_file, out_dir, ext=None, vgmstream_cli=None, wem=True):
     """
-
+    通过皮肤信息文件以及事件、资源文件, 提取音频文件, 支持转码
     :param bin_file: 皮肤信息bin文件
     :param event_file: 皮肤事件bnk文件
     :param audio_file: 音频文件wpk或bnk文件
