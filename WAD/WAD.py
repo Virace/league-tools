@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/3/2 22:36
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/3/2 22:36
+# @Update  : 2021/3/3 20:6
 # @Detail  : 文件结构来源于以下两个库
+
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
 # https://github.com/CommunityDragon/CDTB/blob/master/cdragontoolbox/wad.py
 
@@ -92,9 +94,9 @@ class WAD(SectionNoId):
 
     def extract(self, paths: List[str], out_dir):
         """
-        提供需要解包的文件列表
-        :param paths:
-        :param out_dir:
+        解包wad文件
+        :param paths: 文件路径列表, 例如['assets/characters/aatrox/skins/base/aatrox.skn']
+        :param out_dir: 输出文件夹
         :return:
         """
         for path in paths:
