@@ -21,7 +21,9 @@
 
 ### 安装
 
-无第三方包, 开发环境Python3.8.
+WAD操作部分需要两个第三方包, xxhash和zstd, 前者处理路径hash后者解压资源.
+
+`pip install -r requirements.txt`
 
 
 ### 维护者
