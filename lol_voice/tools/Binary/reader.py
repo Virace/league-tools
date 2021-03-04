@@ -1,4 +1,12 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Author  : Virace
+# @Email   : Virace@aliyun.com
+# @Site    : x-item.com
+# @Software: Pycharm
+# @Create  : 2021/3/4 20:43
+# @Update  : 2021/3/4 20:43
+# @Detail  : 
+
 # -*- coding:utf-8 -*-
 # Author:Virace
 
@@ -128,6 +136,6 @@ class BinaryReader:
         return self.buffer.tell() == self.end
 
     def __del__(self):
-        if self.buffer:
+        if getattr(self, 'buffer', None):
             self.buffer.close()
 

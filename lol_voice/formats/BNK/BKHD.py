@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/2/28 4:33
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/2/28 4:33
+# @Update  : 2021/3/4 19:38
 # @Detail  : Wwise bnk文件, BKHD块
 
-from base import SectionNoId
+from ...base import SectionNoId
 
 
 class BKHD(SectionNoId):

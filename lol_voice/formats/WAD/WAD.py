@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/3 20:6
+# @Update  : 2021/3/4 19:38
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -12,13 +12,13 @@
 
 from typing import List
 from dataclasses import dataclass
-from base import SectionNoId
+from ...base import SectionNoId
 import os
 import zstd
 import gzip
 import xxhash
 import logging
-from Tools import BinaryReader
+from ...tools import BinaryReader
 
 log = logging.getLogger(__name__)
 

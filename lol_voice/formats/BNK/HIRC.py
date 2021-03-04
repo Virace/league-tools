@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/2/27 19:32
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/2/27 19:32
+# @Update  : 2021/3/4 19:38
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
 from typing import List
-from base import Section, SectionNoId
+from ...base import Section, SectionNoId
 
 log = logging.getLogger(__name__)
 

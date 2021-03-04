@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/2/28 13:14
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/2/28 13:14
+# @Update  : 2021/3/4 19:38
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 
 from dataclasses import dataclass
-from base import SectionNoId
+from ...base import SectionNoId
 
 
 def str_fnv_32(name: str):

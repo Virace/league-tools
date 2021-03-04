@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/2/27 19:36
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/2/27 19:36
+# @Update  : 2021/3/4 20:42
 # @Detail  : 块 基类
 
 import os
 import subprocess
 from io import BytesIO
 from typing import Union
-from Tools import BinaryReader
+from .tools import BinaryReader
 
 from dataclasses import dataclass
 

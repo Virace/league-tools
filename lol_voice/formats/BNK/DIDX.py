@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/3/1 21:09
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/3/1 21:09
+# @Update  : 2021/3/4 19:38
 # @Detail  : Wwise bnk文件, DIDX块
 
 
 import logging
-from base import SectionNoId, WemFile
+from ...base import SectionNoId, WemFile
 
 log = logging.getLogger(__name__)
 
