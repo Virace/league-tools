@@ -5,6 +5,7 @@
 
 - [介绍](#介绍)
 - [安装](#安装)
+- [使用](#使用)
 - [维护者](#维护者)
 - [感谢](#感谢)
 - [许可证](#许可证)
@@ -25,6 +26,8 @@ WAD操作部分需要两个第三方包, xxhash和zstd, 前者处理路径hash�
 
 `pip install -r requirements.txt`
 
+### 使用
+参考[index.py](index.py)文件中, example函数. 此脚本适合提取已知皮肤语音, 如需全部提取请关注 [lol_extract_voice](https://github.com/Virace/lol_extract_voice)
 
 ### 维护者
 **Virace**
