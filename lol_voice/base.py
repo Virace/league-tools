@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2021/3/4 20:42
+# @Update  : 2021/3/4 22:43
 # @Detail  : 块 基类
 
 import os
@@ -72,10 +72,24 @@ class WemFile:
         """
         assert self.data, '不存在文件数据, 请调用DATA.get_file后, 在进行保存.'
 
+        self.static_save_file(self.data, path, wem, vgmstream_cli)
+
+    @staticmethod
+    def static_save_file(data, path, wem=True, vgmstream_cli=None):
+        """
+        保存文件静态方法, 如果文件后缀不为wem则自动调用vgmstream转码
+        :param data: 数据
+        :param path: 文件路径
+        :param wem: 如果转码是否保留wem文件
+        :param vgmstream_cli: vgmstream_cli程序用来转码
+        :return:
+        """
+        assert data, '不存在文件数据, 请调用DATA.get_file后, 在进行保存.'
+
         file, ext = os.path.splitext(path)
         wem_path = f'{file}.wem'
         with open(wem_path, 'wb+') as f:
-            f.write(self.data)
+            f.write(data)
 
         if ext != '.wem':
             if vgmstream_cli:
