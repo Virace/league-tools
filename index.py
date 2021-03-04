@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/3 20:12
+# @Update  : 2021/3/4 14:51
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -15,6 +15,7 @@ from typing import List
 from BNK import BNK, HIRC
 from BIN import BIN, StringHash
 from WPK import WPK
+from WAD import WAD
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -180,3 +181,40 @@ def extract_audio(bin_file, event_file, audio_file, out_dir, ext=None, vgmstream
                 if not os.path.exists(_dir):
                     os.makedirs(_dir)
                 file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
+
+
+def example():
+    """
+    按触发事件文件夹分类提取 剑魔 语音文件
+    :return:
+    """
+
+    # 临时目录和最终输出目录
+    temp_path = r'D:\lol\Temp3'
+    out_path = r'D:\lol\Temp4'
+
+    # 英雄名字, 以及对于默认皮肤的三个文件路径
+    champion = 'aatrox'
+    bin_tpl = f'data/characters/{champion}/skins/skin0.bin'
+    audio_tpl = f'assets/sounds/wwise2016/vo/zh_cn/characters/aatrox/skins/base/{champion}_base_vo_audio.wpk'
+    event_tpl = f'assets/sounds/wwise2016/vo/zh_cn/characters/aatrox/skins/base/{champion}_base_vo_events.bnk'
+
+    # 需要解析两个WAD文件, 这个路径修改为自己的游戏目录
+    wad_file1 = r"D:\League of Legends\Game\DATA\FINAL\Champions\Aatrox.wad.client"
+    wad_file2 = r"D:\League of Legends\Game\DATA\FINAL\Champions\Aatrox.zh_CN.wad.client"
+
+    # 将上面三个文件提取到临时目录
+    WAD(wad_file1).extract([bin_tpl], temp_path)
+    WAD(wad_file2).extract([audio_tpl, event_tpl], temp_path)
+
+    # 根据三个文件对应提取语音并整理
+    extract_audio(
+        bin_file=os.path.join(temp_path, os.path.normpath(bin_tpl)),
+        event_file=os.path.join(temp_path, os.path.normpath(event_tpl)),
+        audio_file=os.path.join(temp_path, os.path.normpath(audio_tpl)),
+        out_dir=out_path
+    )
+
+
+if __name__ == '__main__':
+    example()
