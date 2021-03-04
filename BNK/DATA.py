@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2021/3/1 21:09
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
+# @Create  : 2021/3/1 21:09
+# @Update  : 2021/3/4 21:37
 # @Detail  : Wwise bnk文件, Data块
 
 import logging
@@ -11,7 +12,7 @@ from typing import Union, List
 
 from base import SectionNoId
 
-from .DIDX import WemFile
+from base import WemFile
 
 log = logging.getLogger(__name__)
 
