@@ -4,13 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/4 19:38
+# @Update  : 2021/3/5 22:36
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
 # https://github.com/CommunityDragon/CDTB/blob/master/cdragontoolbox/wad.py
 
-from typing import List
+from typing import List, Dict
 from dataclasses import dataclass
 from ...base import SectionNoId
 import os
@@ -92,9 +92,38 @@ class WAD(SectionNoId):
         xx.update(path.encode('utf-8'))
         return int(xx.hexdigest(), 16)
 
+    def _extract(self, file, file_path):
+        self._data.seek(file.offset, 0)
+        this = self._data.bytes(file.compressed_file_size)
+        # https://github.com/Pupix/lol-wad-parser/blob/2de5a9dafb77b7165b568316d5c1b1f8b5e898f2/lib/extract.js#L11
+        # https://github.com/CommunityDragon/CDTB/blob/2663610ed10a2f5fdeeadc5860abca275bcd6af6/cdragontoolbox/wad.py#L82
+        if file.type == 0:
+            data = this
+        elif file.type == 1:
+            data = gzip.decompress(this)
+        elif file.type == 2:
+            data = BinaryReader(this)
+            n = data.customize('<L')
+            data.skip(4)
+            re = data.bytes(4 + n).rstrip(b'\0').decode('utf-8')
+            log.debug(f'文件重定向: {re}')
+            return
+        elif file.type == 3:
+            data = zstd.decompress(this)
+        else:
+            raise ValueError(f"不支持的文件类型: {file.type}")
+
+        file_dir = os.path.dirname(file_path)
+        if not os.path.exists(file_dir):
+            os.makedirs(file_dir)
+
+        log.debug(f'提取文件: {file_path}')
+        with open(file_path, 'wb+') as f:
+            f.write(data)
+
     def extract(self, paths: List[str], out_dir):
         """
-        解包wad文件
+        提供需要解包的文件路径, 解包wad文件
         :param paths: 文件路径列表, 例如['assets/characters/aatrox/skins/base/aatrox.skn']
         :param out_dir: 输出文件夹
         :return:
@@ -103,32 +132,18 @@ class WAD(SectionNoId):
             path_hash = self.get_hash(path)
             for file in self.files:
                 if path_hash == file.path_hash:
-
-                    self._data.seek(file.offset, 0)
-                    this = self._data.bytes(file.compressed_file_size)
-                    # https://github.com/Pupix/lol-wad-parser/blob/2de5a9dafb77b7165b568316d5c1b1f8b5e898f2/lib/extract.js#L11
-                    # https://github.com/CommunityDragon/CDTB/blob/2663610ed10a2f5fdeeadc5860abca275bcd6af6/cdragontoolbox/wad.py#L82
-                    if file.type == 0:
-                        data = this
-                    elif file.type == 1:
-                        data = gzip.decompress(this)
-                    elif file.type == 2:
-                        data = BinaryReader(this)
-                        n = data.customize('<L')
-                        data.skip(4)
-                        re = data.bytes(4 + n).rstrip(b'\0').decode('utf-8')
-                        log.debug(f'文件重定向: {re}')
-                        continue
-                    elif file.type == 3:
-                        data = zstd.decompress(this)
-                    else:
-                        raise ValueError(f"不支持的文件类型: {file.type}")
-
                     file_path = os.path.join(out_dir, os.path.normpath(path))
-                    file_dir = os.path.dirname(file_path)
-                    if not os.path.exists(file_dir):
-                        os.makedirs(file_dir)
+                    self._extract(file, file_path)
 
-                    log.debug(f'提取文件: {file_path}')
-                    with open(file_path, 'wb+') as f:
-                        f.write(data)
+    def extract_hash(self, hashtable: Dict[str, str], out_dir):
+        """
+        提供哈希表, 解包文件.
+        :param hashtable:  {'hash:10': 'path:str'}
+        :param out_dir:
+        :return:
+        """
+        for file in self.files:
+            if (s := str(file.path_hash)) in hashtable:
+                path = hashtable[s]
+                file_path = os.path.join(out_dir, os.path.normpath(path))
+                self._extract(file, file_path)
