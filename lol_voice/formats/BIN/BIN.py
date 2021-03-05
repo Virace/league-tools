@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/4 19:38
+# @Update  : 2021/3/6 3:3
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 
@@ -61,5 +61,37 @@ class BIN(SectionNoId):
     def get_hash_table(self):
         return self.hash_tables
 
+    def get_audio_files(self, head='ASSETS/Sounds/Wwise2016'):
+        """
+        获取于音频有关的文件列表
+
+        例如: 查看当前bin文件中都调用了那些语音相关文件
+        以最新版本路径为例, 音频文件均以 ASSETS/Sounds/Wwise2016 为开头
+        则直接调用get_files('ASSETS/Sounds/Wwise2016')
+
+
+        :param head: 路径特征
+        :return:
+        """
+        res = []
+        self._data.seek(4, 0)
+        while not self._data.is_end():
+            if self._data.find(head) != -1:
+                #         uint32: 文件数量
+                #         FOR EACH (文件数量) {
+                #             uint16: 字符串长度
+                #             byte[]: 文件路径字符串
+                #         } END FOR
+                self._data.seek(-6 - len(head), 1)
+                item_length = self._data.customize('<L')
+                for i in range(item_length):
+                    length = self._data.customize('<H')
+                    item = self._data.str(length)
+                    res.append(item)
+            else:
+                break
+        return res
+
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
+
