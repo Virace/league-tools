@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2021/3/4 20:43
+# @Update  : 2021/3/6 3:7
 # @Detail  : 
 
 # -*- coding:utf-8 -*-
@@ -23,6 +23,7 @@ class BinaryReader:
     """
     以二进制操作流、文件
     """
+
     def __init__(self, file: Union[IOBase, BytesIO, bytes, str]):
         if isinstance(file, str):
             self.buffer = io.open(file, 'rb')
@@ -100,11 +101,10 @@ class BinaryReader:
         :param whence: 位置
         :return:
         """
-        if offset < 0:
-            return
+
         self.buffer.seek(offset, whence)
 
-    def find(self, sub: Union[bytes, bytearray, list], start=False):
+    def find(self, sub: Union[bytes, bytearray, list, str], start=False):
         """
         查询, 支持字节、字节数组、10进制数组
         :param sub:
@@ -115,6 +115,8 @@ class BinaryReader:
             sub = bytes(bytearray(sub))
         elif isinstance(sub, bytearray):
             sub = bytes(sub)
+        elif isinstance(sub, str):
+            sub = bytes(sub.encode('utf-8'))
 
         if start:
             self.buffer.seek(0, 0)
