@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/5 22:36
+# @Update  : 2021/3/7 20:52
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -121,29 +121,35 @@ class WAD(SectionNoId):
         with open(file_path, 'wb+') as f:
             f.write(data)
 
-    def extract(self, paths: List[str], out_dir):
+    def extract(self, paths: List[str], out_dir) -> List:
         """
         提供需要解包的文件路径, 解包wad文件
         :param paths: 文件路径列表, 例如['assets/characters/aatrox/skins/base/aatrox.skn']
         :param out_dir: 输出文件夹
         :return:
         """
+        ret = []
         for path in paths:
             path_hash = self.get_hash(path)
             for file in self.files:
                 if path_hash == file.path_hash:
                     file_path = os.path.join(out_dir, os.path.normpath(path))
                     self._extract(file, file_path)
+                    ret.append(file_path)
+        return ret
 
-    def extract_hash(self, hashtable: Dict[str, str], out_dir):
+    def extract_hash(self, hashtable: Dict[str, str], out_dir) -> List:
         """
         提供哈希表, 解包文件.
         :param hashtable:  {'hash:10': 'path:str'}
         :param out_dir:
         :return:
         """
+        ret = []
         for file in self.files:
             if (s := str(file.path_hash)) in hashtable:
                 path = hashtable[s]
                 file_path = os.path.join(out_dir, os.path.normpath(path))
                 self._extract(file, file_path)
+                ret.append(file_path)
+        return ret
