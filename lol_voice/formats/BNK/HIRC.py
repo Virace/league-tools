@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/3/9 0:58
+# @Update  : 2021/3/9 3:2
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
@@ -58,9 +58,13 @@ class Sound(Section):
         self._data.seek(4)
         self.sound_object_id = self._data.customize('<L')
 
-        assert self.is_streamed in [0, 1, 2], 'is_streamed(资源类型)范围错误'
-        assert self.source_id, 'source_id(资源ID)不能为空'
-        assert self.sound_type in [0, 1], 'sound_type(声音类型)范围错误'
+        # assert self.is_streamed in [0, 1, 2], 'is_streamed(资源类型)范围错误'
+        # assert self.source_id, 'source_id(资源ID)不能为空'
+        # 安妮10号皮肤效果音, 有source_id为0的, 废弃语音？？
+
+        # assert self.sound_type in [0, 1], 'sound_type(声音类型)范围错误'
+        # 阿卡丽有个皮肤sound_type为65792  而且sound_object_id为65536
+
         # 其余信息为Sound_structure, http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#Sound_structure
         # 因为用不到, 这部分不进行解析
 
@@ -313,8 +317,10 @@ class MusicTrack(Section):
     ]
 
     def _read(self):
-        self.file_id, self.music_container_id = self._data.customize('<10xL64xL')
-        # 未测试
+        self._data.seek(10)
+        self.file_id = self._data.customize('<L')
+        self._data.seek(64)
+        self.music_container_id = self._data.customize('<L')
 
     def __repr__(self):
         return f'{super().__repr__()}, ' \
@@ -377,15 +383,14 @@ class HIRC(SectionNoId):
 
         for i in range(number):
             section_type, section_length = self._data.customize('<BL', False)
-
-            # print(f'Type: {t}, Length: {l}')
-            data = self._data.binary(section_length)
             _call, _set = self._parse.get(section_type, (None, None))
             if _call:
+                data = self._data.binary(section_length)
                 _set(_call(data))
                 self.number_of_objects += 1
             else:
-                log.debug(f'Type: {section_type}, Length: {section_length}')
+                self._data.skip(section_length)
+            log.debug(f'Type: {section_type}, Length: {section_length}')
 
     def _set_actor_mixer(self, data):
         self.actor_mixer.append(data)
