@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/3/4 19:38
+# @Update  : 2021/3/9 0:58
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
@@ -236,7 +236,7 @@ class RSContainer(Section):
             # https://github.com/Morilli/bnk-extract/blob/5b1fd19e41b36addba351491c477765ad8a2ae09/sound.c#L143
             return
         if unk4 and unk2:
-            self._data.seek(113)
+            self._data.seek(13)
             unk5 = self._data.customize('<B')
             to_seek += 12 * unk5
 
@@ -419,3 +419,4 @@ class HIRC(SectionNoId):
 
     def __repr__(self):
         return f'Number_Of_Objects: {self.number_of_objects}'
+
