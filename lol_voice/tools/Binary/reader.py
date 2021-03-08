@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2021/3/6 3:7
+# @Update  : 2021/3/9 2:18
 # @Detail  : 
 
 # -*- coding:utf-8 -*-
@@ -44,7 +44,10 @@ class BinaryReader:
         """
         length = struct.calcsize(fmt)
         before = self.buffer.tell()
-        data = struct.unpack(fmt, self.buffer.read(length))
+        d1 = self.buffer.read(length)
+        if length > len(d1):
+            return
+        data = struct.unpack(fmt, d1)
         log.debug(f'{fmt}: {length}, before: {before}, after: {self.buffer.tell()}')
         return data[0] if one else data
 
@@ -140,4 +143,3 @@ class BinaryReader:
     def __del__(self):
         if getattr(self, 'buffer', None):
             self.buffer.close()
-
