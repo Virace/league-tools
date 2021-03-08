@@ -4,13 +4,19 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/8 11:24
+# @Update  : 2021/3/9 0:6
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
 from typing import Union, List, Set
 from dataclasses import dataclass
 from ...base import SectionNoId
+
+CHINESE_EVENTS = {
+    'oncast': '释放时',
+    'onhit': '击中时',
+    'basicattack': '普通攻击',
+}
 
 
 def str_fnv_32(name: str):
@@ -74,7 +80,7 @@ class BIN(SectionNoId):
         :return:
         """
         if isinstance(data, str):
-            data = json.load(open(data, 'utf-8'))
+            data = json.load(open(data, encoding='utf-8'))
         return [StringHash(item['string'], item['hash'], item['switch_id']) for item in data]
 
     def get_audio_files(self, head='ASSETS/Sounds/Wwise2016') -> List:
@@ -117,3 +123,4 @@ class BIN(SectionNoId):
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
+

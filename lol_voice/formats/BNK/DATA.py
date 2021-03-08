@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2021/3/4 19:38
+# @Update  : 2021/3/8 20:54
 # @Detail  : Wwise bnk文件, Data块
 
 import logging
@@ -43,4 +43,4 @@ class DATA(SectionNoId):
         return res
 
     def __repr__(self):
-        return f'Data Length: {len(self._data.end)}'
+        return f'Data Length: {self._data.end}'
