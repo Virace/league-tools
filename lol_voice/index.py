@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/8 13:2
+# @Update  : 2021/3/9 0:30
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -173,6 +173,9 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
         audio_files = WPK(audio_file).files
     else:
         audio_bnk = BNK(audio_file)
+        if b'DATA' not in audio_bnk.objects:
+            return
+        
         audio_files = audio_bnk.objects[b'DATA'].get_files(audio_bnk.objects[b'DIDX'].files)
     hirc = event.objects[b'HIRC']
 
