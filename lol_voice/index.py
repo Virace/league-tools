@@ -4,14 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/4 22:53
+# @Update  : 2021/3/8 13:2
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import os
 import logging
-from typing import List
+from typing import List, Union
 from concurrent.futures import ThreadPoolExecutor
 from .formats.BNK import BNK, HIRC
 from .formats.BIN import BIN, StringHash
@@ -141,10 +141,12 @@ def get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Strin
     return res
 
 
-def extract_audio(bin_file, event_file, audio_file, out_dir, ext=None, vgmstream_cli=None, wem=True, workers=3):
+def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir, ext=None, vgmstream_cli=None,
+                  wem=True,
+                  workers=3):
     """
     通过皮肤信息文件以及事件、资源文件, 提取音频文件, 支持转码
-    :param bin_file: 皮肤信息bin文件
+    :param bin_file: 皮肤信息bin文件或直接提供事件哈希表
     :param event_file: 皮肤事件bnk文件
     :param audio_file: 音频文件wpk或bnk文件
     :param out_dir: 解包输出文件夹
@@ -157,24 +159,28 @@ def extract_audio(bin_file, event_file, audio_file, out_dir, ext=None, vgmstream
     if ext and ext != 'wem' and not vgmstream_cli:
         raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
 
-    b1 = BIN(bin_file)
-    # 获取事件哈希表
-    read_strings = b1.hash_tables.copy()
+    if isinstance(bin_file, str):
+        b1 = BIN(bin_file)
+        # 获取事件哈希表
+        read_strings = b1.hash_tables.copy()
+    else:
+        read_strings = bin_file
     # 解析事件文件
     event = BNK(event_file)
     # 解析音频文件
     audio_ext = os.path.splitext(audio_file)[-1]
     if audio_ext == '.wpk':
-        audio = WPK(audio_file)
+        audio_files = WPK(audio_file).files
     else:
-        audio = BNK(audio_file).objects[b'DATA']
+        audio_bnk = BNK(audio_file)
+        audio_files = audio_bnk.objects[b'DATA'].get_files(audio_bnk.objects[b'DIDX'].files)
     hirc = event.objects[b'HIRC']
 
     # 获取音频ID于事件哈希表
     data = get_audio_hashtable(hirc, read_strings)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         for ss in data:
-            for file in audio.files:
+            for file in audio_files:
                 if ss.hash == file.id:
                     name = file.filename if file.filename else f'{file.id}.wem'
                     if ext:
@@ -187,3 +193,4 @@ def extract_audio(bin_file, event_file, audio_file, out_dir, ext=None, vgmstream
                     executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
                                     vgmstream_cli=vgmstream_cli)
                     # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
+
