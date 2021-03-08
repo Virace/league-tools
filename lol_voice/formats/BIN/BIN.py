@@ -4,10 +4,11 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/6 3:3
+# @Update  : 2021/3/8 11:24
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
-
+import json
+from typing import Union, List, Set
 from dataclasses import dataclass
 from ...base import SectionNoId
 
@@ -58,10 +59,25 @@ class BIN(SectionNoId):
                         hash=str_fnv_32(item)
                     ))
 
-    def get_hash_table(self):
-        return self.hash_tables
+    def get_hash_table(self) -> List:
+        """
+        输出格式为列表
+        :return:
+        """
+        return [item.__dict__ for item in self.hash_tables]
 
-    def get_audio_files(self, head='ASSETS/Sounds/Wwise2016'):
+    @staticmethod
+    def load_hash_table(data: Union[str, list]) -> List[StringHash]:
+        """
+        从文件获取或从列表中解析 StringHash
+        :param data:
+        :return:
+        """
+        if isinstance(data, str):
+            data = json.load(open(data, 'utf-8'))
+        return [StringHash(item['string'], item['hash'], item['switch_id']) for item in data]
+
+    def get_audio_files(self, head='ASSETS/Sounds/Wwise2016') -> List:
         """
         获取于音频有关的文件列表
 
@@ -73,10 +89,12 @@ class BIN(SectionNoId):
         :param head: 路径特征
         :return:
         """
-        res = []
+        res = set()
+        temp = []
         self._data.seek(4, 0)
         while not self._data.is_end():
             if self._data.find(head) != -1:
+                group = []
                 #         uint32: 文件数量
                 #         FOR EACH (文件数量) {
                 #             uint16: 字符串长度
@@ -87,11 +105,15 @@ class BIN(SectionNoId):
                 for i in range(item_length):
                     length = self._data.customize('<H')
                     item = self._data.str(length)
-                    res.append(item)
+                    if item not in temp:
+                        group.append(item)
+                    else:
+                        temp.append(temp)
+                if group:
+                    res.add(tuple(group))
             else:
                 break
-        return res
+        return list(res)
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
-
