@@ -4,13 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/9 0:6
+# @Update  : 2021/3/9 19:29
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
-from typing import Union, List, Set
 from dataclasses import dataclass
-from ...base import SectionNoId
+from typing import Union, List
+
+from lol_voice.base import SectionNoId
 
 CHINESE_EVENTS = {
     'oncast': '释放时',

@@ -4,15 +4,16 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:36
-# @Update  : 2021/3/4 19:38
+# @Update  : 2021/3/9 19:34
 # @Detail  : Wwise bnk文件解析, 目前仅对BKHD、HIRC、DIDX、DATA四种块信息进行处理
 
 import logging
-from ...base import SectionNoId
-from .BKHD import BKHD
-from .HIRC import HIRC
-from .DIDX import DIDX
-from .DATA import DATA
+
+from lol_voice.base import SectionNoId
+from lol_voice.formats.section import BKHD
+from lol_voice.formats.section import DATA
+from lol_voice.formats.section import DIDX
+from lol_voice.formats.section import HIRC
 
 log = logging.getLogger(__name__)
 

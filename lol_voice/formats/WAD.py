@@ -4,21 +4,23 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/7 20:52
+# @Update  : 2021/3/9 19:31
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
 # https://github.com/CommunityDragon/CDTB/blob/master/cdragontoolbox/wad.py
 
-from typing import List, Dict
-from dataclasses import dataclass
-from ...base import SectionNoId
-import os
-import zstd
 import gzip
-import xxhash
 import logging
-from ...tools import BinaryReader
+import os
+from dataclasses import dataclass
+from typing import List, Dict
+
+import xxhash
+import zstd
+
+from lol_voice.base import SectionNoId
+from lol_voice.tools import BinaryReader
 
 log = logging.getLogger(__name__)
 

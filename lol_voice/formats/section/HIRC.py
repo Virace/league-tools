@@ -4,12 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/3/9 3:2
+# @Update  : 2021/3/9 19:35
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
 from typing import List
-from ...base import Section, SectionNoId
+
+from lol_voice.base import Section, SectionNoId
 
 log = logging.getLogger(__name__)
 
