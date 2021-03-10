@@ -4,16 +4,16 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2021/3/4 22:43
+# @Update  : 2021/3/9 20:18
 # @Detail  : 块 基类
 
 import os
 import subprocess
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Union
-from .tools import BinaryReader
 
-from dataclasses import dataclass
+from lol_voice.tools import BinaryReader
 
 
 class Section:
