@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/10 17:3
+# @Update  : 2021/3/11 1:39
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -142,9 +142,10 @@ def get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Strin
     return res
 
 
-def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir, ext=None, vgmstream_cli=None,
+def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir=None, ext=None,
+                  vgmstream_cli=None,
                   wem=True,
-                  workers=3):
+                  data=False):
     """
     通过皮肤信息文件以及事件、资源文件, 提取音频文件, 支持转码
     :param bin_file: 皮肤信息bin文件或直接提供事件哈希表
@@ -154,11 +155,14 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     :param ext: 输出文件后缀名, 如果不为wem则自动转码, 见下
     :param vgmstream_cli: vgmstream_cli程序, 用来解码
     :param wem: 如果转码是否保留wem文件
-    :param workers: 保存文件线程池数
+    :param data: 数据模式, 不提取文件只返回对应表
     :return:
     """
     if ext and ext != 'wem' and not vgmstream_cli:
         raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
+
+    if not data and not out_dir:
+        raise TypeError('缺少关键性参数 out_dir 输出目录')
 
     if isinstance(bin_file, str):
         b1 = BIN(bin_file)
@@ -177,33 +181,46 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
         if b'DATA' not in audio_bnk.objects:
             # 这说明bnk中没有音频数据, 直接返回
             return
-        
+
         audio_files = audio_bnk.objects[b'DATA'].get_files(audio_bnk.objects[b'DIDX'].files)
     hirc = event.objects[b'HIRC']
 
     # 获取音频ID于事件哈希表
-    data = get_audio_hashtable(hirc, read_strings)
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        # 去重
-        temp = {}
-        for ss in data:
-            for file in audio_files:
-                if ss.hash == file.id:
+    audio_hashtable = get_audio_hashtable(hirc, read_strings)
+    # 去重
+    temp = {}
+    res = {}
+    for ht in audio_hashtable:
+        for file in audio_files:
+            if ht.hash == file.id:
+
+                if data:
+                    if ht.string not in res:
+                        res[ht.string] = []
+                    res[ht.string].append(file.id)
+                else:
                     name = file.filename if file.filename else f'{file.id}.wem'
                     if ext:
                         name = f'{os.path.splitext(name)[0]}.{ext}'
 
-                    _dir = os.path.join(out_dir, ss.string)
+                    _dir = os.path.join(out_dir, ht.string)
                     if not os.path.exists(_dir):
                         os.makedirs(_dir)
 
                     if file.id not in temp:
                         temp.update({file.id: os.path.join(_dir, name)})
-                        logging.debug(f'Event: {ss.string}, File: {name}')
-                        executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
-                                        vgmstream_cli=vgmstream_cli)
+                        logging.debug(f'Event: {ht.string}, File: {name}')
+                        file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
+                        # executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
+                        #                 vgmstream_cli=vgmstream_cli)
                     else:
                         # 创建链接
-                        executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
+                        try:
+                            os.symlink(temp[file.id], os.path.join(_dir, name))
+                        except FileExistsError:
+                            pass
+                        # executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
                     # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
 
+    if data:
+        return res
