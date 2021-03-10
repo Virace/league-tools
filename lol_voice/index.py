@@ -4,18 +4,19 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/9 0:30
+# @Update  : 2021/3/10 17:3
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
-import os
 import logging
-from typing import List, Union
+import os
 from concurrent.futures import ThreadPoolExecutor
-from .formats.BNK import BNK, HIRC
-from .formats.BIN import BIN, StringHash
-from .formats.WPK import WPK
+from typing import List, Union
+
+from lol_voice.formats.BIN import BIN, StringHash
+from lol_voice.formats.BNK import BNK, HIRC
+from lol_voice.formats.WPK import WPK
 
 log = logging.getLogger(__name__)
 
@@ -174,6 +175,7 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     else:
         audio_bnk = BNK(audio_file)
         if b'DATA' not in audio_bnk.objects:
+            # 这说明bnk中没有音频数据, 直接返回
             return
         
         audio_files = audio_bnk.objects[b'DATA'].get_files(audio_bnk.objects[b'DIDX'].files)
@@ -182,6 +184,8 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     # 获取音频ID于事件哈希表
     data = get_audio_hashtable(hirc, read_strings)
     with ThreadPoolExecutor(max_workers=workers) as executor:
+        # 去重
+        temp = {}
         for ss in data:
             for file in audio_files:
                 if ss.hash == file.id:
@@ -192,8 +196,14 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
                     _dir = os.path.join(out_dir, ss.string)
                     if not os.path.exists(_dir):
                         os.makedirs(_dir)
-                    logging.info(f'Event: {ss.string}, File: {name}')
-                    executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
-                                    vgmstream_cli=vgmstream_cli)
+
+                    if file.id not in temp:
+                        temp.update({file.id: os.path.join(_dir, name)})
+                        logging.debug(f'Event: {ss.string}, File: {name}')
+                        executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
+                                        vgmstream_cli=vgmstream_cli)
+                    else:
+                        # 创建链接
+                        executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
                     # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
 
