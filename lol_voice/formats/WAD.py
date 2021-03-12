@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/9 19:31
+# @Update  : 2021/3/12 13:8
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -14,7 +14,7 @@ import gzip
 import logging
 import os
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import xxhash
 import zstd
@@ -94,7 +94,7 @@ class WAD(SectionNoId):
         xx.update(path.encode('utf-8'))
         return int(xx.hexdigest(), 16)
 
-    def _extract(self, file, file_path):
+    def _extract(self, file, file_path, raw):
         self._data.seek(file.offset, 0)
         this = self._data.bytes(file.compressed_file_size)
         # https://github.com/Pupix/lol-wad-parser/blob/2de5a9dafb77b7165b568316d5c1b1f8b5e898f2/lib/extract.js#L11
@@ -115,38 +115,45 @@ class WAD(SectionNoId):
         else:
             raise ValueError(f"不支持的文件类型: {file.type}")
 
-        file_dir = os.path.dirname(file_path)
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
+        if raw:
+            return data
+        else:
+            file_dir = os.path.dirname(file_path)
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir)
 
-        log.debug(f'提取文件: {file_path}')
-        with open(file_path, 'wb+') as f:
-            f.write(data)
+            log.debug(f'提取文件: {file_path}')
+            with open(file_path, 'wb+') as f:
+                f.write(data)
+            return file_path
 
-    def extract(self, paths: List[str], out_dir) -> List:
+    def extract(self, paths: List[str], out_dir: str = '', raw=False) -> List:
         """
         提供需要解包的文件路径, 解包wad文件
         :param paths: 文件路径列表, 例如['assets/characters/aatrox/skins/base/aatrox.skn']
         :param out_dir: 输出文件夹
+        :param raw: 源数据
         :return:
         """
+        if not out_dir and not raw:
+            raise TypeError('out_dir 与 raw 不能同时为空')
         ret = []
         for path in paths:
             path_hash = self.get_hash(path)
             for file in self.files:
                 if path_hash == file.path_hash:
                     file_path = os.path.join(out_dir, os.path.normpath(path))
-                    self._extract(file, file_path)
-                    ret.append(file_path)
+                    ret.append(self._extract(file, file_path, raw))
         return ret
 
-    def extract_hash(self, hashtable: Dict[str, str], out_dir) -> List:
+    def extract_hash(self, hashtable: Dict[str, str], out_dir: str = '') -> List:
         """
         提供哈希表, 解包文件.
         :param hashtable:  {'hash:10': 'path:str'}
-        :param out_dir:
+        :param out_dir: 输出文件夹
         :return:
         """
+
         ret = []
         for file in self.files:
             if (s := str(file.path_hash)) in hashtable:
