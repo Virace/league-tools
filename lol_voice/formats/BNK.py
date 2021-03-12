@@ -4,16 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:36
-# @Update  : 2021/3/9 19:34
+# @Update  : 2021/3/13 0:20
 # @Detail  : Wwise bnk文件解析, 目前仅对BKHD、HIRC、DIDX、DATA四种块信息进行处理
 
 import logging
 
 from lol_voice.base import SectionNoId
-from lol_voice.formats.section import BKHD
-from lol_voice.formats.section import DATA
-from lol_voice.formats.section import DIDX
-from lol_voice.formats.section import HIRC
+from lol_voice.formats.section import BKHD, DATA, DIDX, HIRC
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +50,13 @@ class BNK(SectionNoId):
                 self._data.seek(length)
                 log.debug(f'Unresolved_object: {head}, '
                           f'Length: {length}')
+
+    def get_data_files(self):
+        if b'DATA' not in self.objects:
+            # 这说明bnk中没有音频数据, 直接返回
+            return []
+
+        return self.objects[b'DIDX'].files
 
     def __repr__(self):
         return f'{self.objects}'
