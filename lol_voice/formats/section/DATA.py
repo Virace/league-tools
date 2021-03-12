@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2021/3/13 0:20
+# @Update  : 2021/3/13 1:0
 # @Detail  : Wwise bnk文件, Data块
 
 import logging
@@ -29,16 +29,18 @@ class DATA(SectionNoId):
     """
 
     def get_files(self, files: List[WemFile]):
-        res = []
+        # res = []
         for item in files:
             self._data.seek(item.offset, 0)
-            res.append(
-                WemFile(
-                    **item.__dict__(),
-                    data=self._data.bytes(item.length)
-                )
-            )
-        return res
+            item.data = self._data.bytes(item.length)
+            # res.append(
+            #     WemFile(
+            #         **item.__dict__(),
+            #         data=self._data.bytes(item.length)
+            #     )
+            # )
+        return files
 
     def __repr__(self):
         return f'Data Length: {self._data.end}'
+

@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 0:57
-# @Update  : 2021/3/9 19:28
+# @Update  : 2021/3/13 0:55
 # @Detail  : 
 
 from lol_voice.base import SectionNoId, WemFile
@@ -34,18 +34,20 @@ class WPK(SectionNoId):
             # filename = self._data.str(filename_size * 2)
             filename = bytearray(self._data.customize(f'<{filename_size}H', False)).decode('utf-8')
 
-            self._data.seek(offset, 0)
-            data = self._data.bytes(length)
-
             self.files.append(
                 WemFile(
                     filename=filename,
-                    data=data,
                     offset=offset,
                     length=length,
                     id=int(filename.split('.')[0])
                 )
             )
+
+    def get_files_data(self):
+        for file in self.files:
+            self._data.seek(file.offset, 0)
+            file.data = self._data.bytes(file.length)
+        return self.files
 
     def __repr__(self):
         return f'File_Version: {self.version}, ' \
