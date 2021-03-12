@@ -4,16 +4,16 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/11 1:39
+# @Update  : 2021/3/12 14:5
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Union
-
+from lol_voice.base import WemFile
 from lol_voice.formats.BIN import BIN, StringHash
 from lol_voice.formats.BNK import BNK, HIRC
 from lol_voice.formats.WPK import WPK
@@ -34,7 +34,7 @@ def obj_find_one(obj, key, value):
             return item
 
 
-def get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[StringHash]:
+def _get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[StringHash]:
     """
     根据bnk文件中hirc块以及bin文件中提取的事件哈希表, 返回事件于音频ID对应哈希表
     这部分代码, 逻辑未理清.
@@ -142,6 +142,69 @@ def get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Strin
     return res
 
 
+def get_audio_files(audio_file) -> List[WemFile]:
+    # 解析音频文件
+    audio_ext = os.path.splitext(audio_file)[-1]
+    if audio_ext == '.wpk':
+        audio_files = WPK(audio_file).files
+    else:
+        audio_files = BNK(audio_file).get_data_files()
+        if not audio_files:
+            # 这说明bnk中没有音频数据, 直接返回
+            return []
+    return audio_files
+
+
+def get_audio_hashtable(bin_file: Union[str, List[StringHash]], event_file):
+    """
+    根据皮肤bin文件以及音频事件, 提取事件哈希表
+    :param bin_file:
+    :param event_file:
+    :return:
+    """
+    if isinstance(bin_file, str):
+        b1 = BIN(bin_file)
+        # 获取事件哈希表
+        read_strings = b1.hash_tables.copy()
+    else:
+        read_strings = bin_file
+    # 解析事件文件
+    event = BNK(event_file)
+
+    hirc = event.objects[b'HIRC']
+
+    # 获取音频ID于事件哈希表
+    audio_hashtable = _get_audio_hashtable(hirc, read_strings)
+    return audio_hashtable
+
+
+def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_cli=None, worker=None):
+    """
+    无需分类直接提取文件
+    :param audio_file: 音频文件, 可以是bnk和wpk文件
+    :param out_dir: 输出文件夹
+    :param ext: 转码所需后缀名
+    :param wem: 转码后是否保留wem文件, 默认删除
+    :param vgmstream_cli: 转码所需程序vgmstream
+    :param worker: 线程数量
+    :return:
+    """
+    if ext and ext != 'wem' and not vgmstream_cli:
+        raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
+
+    audio_files = get_audio_files(audio_file)
+    with ThreadPoolExecutor(max_workers=worker) as executor:
+        future_to_path = {
+            executor.submit(file.save_file, os.path.join(out_dir, file.filename or f'{file.id}.wem'), wem,
+                            vgmstream_cli): file for file in audio_files}
+        for future in as_completed(future_to_path):
+            path = future_to_path[future]
+            try:
+                future.result()
+            except Exception as exc:
+                log.error(f'提取文件出错: {exc}, 出错文件: {path}')
+
+
 def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir=None, ext=None,
                   vgmstream_cli=None,
                   wem=True,
@@ -164,63 +227,36 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     if not data and not out_dir:
         raise TypeError('缺少关键性参数 out_dir 输出目录')
 
-    if isinstance(bin_file, str):
-        b1 = BIN(bin_file)
-        # 获取事件哈希表
-        read_strings = b1.hash_tables.copy()
-    else:
-        read_strings = bin_file
-    # 解析事件文件
-    event = BNK(event_file)
-    # 解析音频文件
-    audio_ext = os.path.splitext(audio_file)[-1]
-    if audio_ext == '.wpk':
-        audio_files = WPK(audio_file).files
-    else:
-        audio_bnk = BNK(audio_file)
-        if b'DATA' not in audio_bnk.objects:
-            # 这说明bnk中没有音频数据, 直接返回
-            return
+    audio_hashtable = get_audio_hashtable(bin_file, event_file)
 
-        audio_files = audio_bnk.objects[b'DATA'].get_files(audio_bnk.objects[b'DIDX'].files)
-    hirc = event.objects[b'HIRC']
-
-    # 获取音频ID于事件哈希表
-    audio_hashtable = get_audio_hashtable(hirc, read_strings)
+    if not (audio_files := get_audio_files(audio_file)):
+        return
+    
     # 去重
     temp = {}
-    res = {}
     for ht in audio_hashtable:
         for file in audio_files:
             if ht.hash == file.id:
+                name = file.filename or f'{file.id}.wem'
+                if ext:
+                    name = f'{os.path.splitext(name)[0]}.{ext}'
 
-                if data:
-                    if ht.string not in res:
-                        res[ht.string] = []
-                    res[ht.string].append(file.id)
+                _dir = os.path.join(out_dir, ht.string)
+                if not os.path.exists(_dir):
+                    os.makedirs(_dir)
+
+                if file.id not in temp:
+                    temp.update({file.id: os.path.join(_dir, name)})
+                    logging.debug(f'Event: {ht.string}, File: {name}')
+                    file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
+                    # executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
+                    #                 vgmstream_cli=vgmstream_cli)
                 else:
-                    name = file.filename if file.filename else f'{file.id}.wem'
-                    if ext:
-                        name = f'{os.path.splitext(name)[0]}.{ext}'
+                    # 创建链接
+                    try:
+                        os.symlink(temp[file.id], os.path.join(_dir, name))
+                    except FileExistsError:
+                        pass
+                    # executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
+                # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
 
-                    _dir = os.path.join(out_dir, ht.string)
-                    if not os.path.exists(_dir):
-                        os.makedirs(_dir)
-
-                    if file.id not in temp:
-                        temp.update({file.id: os.path.join(_dir, name)})
-                        logging.debug(f'Event: {ht.string}, File: {name}')
-                        file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
-                        # executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
-                        #                 vgmstream_cli=vgmstream_cli)
-                    else:
-                        # 创建链接
-                        try:
-                            os.symlink(temp[file.id], os.path.join(_dir, name))
-                        except FileExistsError:
-                            pass
-                        # executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
-                    # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
-
-    if data:
-        return res

@@ -4,12 +4,12 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 18:48
-# @Update  : 2021/3/10 17:7
+# @Update  : 2021/3/12 14:29
 # @Detail  : 
 
 import setuptools
 
-version = '1.0.0a3'
+version = '1.0.0a4'
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()

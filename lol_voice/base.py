@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2021/3/12 14:25
+# @Update  : 2021/3/9 20:18
 # @Detail  : 块 基类
 
 import os
@@ -51,7 +51,7 @@ class SectionNoId(Section):
     def _read_object(self):
         attr = 'object_id'
         if hasattr(self, attr):
-            delattr(self, attr)
+            delattr(self, 'object_id')
 
 
 @dataclass
@@ -70,7 +70,7 @@ class WemFile:
         :param vgmstream_cli: vgmstream_cli程序用来转码
         :return:
         """
-        assert self.data, '不存在文件数据'
+        assert self.data, '不存在文件数据, 请调用DATA.get_file后, 在进行保存.'
 
         self.static_save_file(self.data, path, wem, vgmstream_cli)
 
@@ -84,7 +84,7 @@ class WemFile:
         :param vgmstream_cli: vgmstream_cli程序用来转码
         :return:
         """
-        assert data, '不存在文件数据.'
+        assert data, '不存在文件数据, 请调用DATA.get_file后, 在进行保存.'
 
         file, ext = os.path.splitext(path)
         wem_path = f'{file}.wem'

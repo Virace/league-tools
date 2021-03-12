@@ -4,14 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2021/3/9 19:35
+# @Update  : 2021/3/13 0:20
 # @Detail  : Wwise bnk文件, Data块
 
 import logging
 from typing import List
 
-from lol_voice.base import SectionNoId
-from lol_voice.base import WemFile
+from lol_voice.base import SectionNoId, WemFile
 
 log = logging.getLogger(__name__)
 
