@@ -4,15 +4,17 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/12 14:5
+# @Update  : 2021/3/13 2:0
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import logging
 import os
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Union
+
 from lol_voice.base import WemFile
 from lol_voice.formats.BIN import BIN, StringHash
 from lol_voice.formats.BNK import BNK, HIRC
@@ -21,20 +23,7 @@ from lol_voice.formats.WPK import WPK
 log = logging.getLogger(__name__)
 
 
-def obj_find_one(obj, key, value):
-    """
-    查询对象数组中key属性等于value的对象
-    :param obj: 对象数组
-    :param key: 对象属性名
-    :param value: 要查找的属性值
-    :return:
-    """
-    for item in obj:
-        if getattr(item, key) == value:
-            return item
-
-
-def _get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[StringHash]:
+def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[StringHash]:
     """
     根据bnk文件中hirc块以及bin文件中提取的事件哈希表, 返回事件于音频ID对应哈希表
     这部分代码, 逻辑未理清.
@@ -46,6 +35,18 @@ def _get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
     :param action_hash:
     :return:
     """
+
+    def obj_find_one(obj, key, value):
+        """
+        查询对象数组中key属性等于value的对象
+        :param obj: 对象数组
+        :param key: 对象属性名
+        :param value: 要查找的属性值
+        :return:
+        """
+        for item in obj:
+            if getattr(item, key) == value:
+                return item
 
     res = []
     for string in action_hash:
@@ -142,20 +143,32 @@ def _get_audio_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
     return res
 
 
-def get_audio_files(audio_file) -> List[WemFile]:
+def get_audio_files(audio_file, get_data=True) -> List[WemFile]:
+    """
+    提供音频文件, 返回文件列表
+    :param audio_file: 音频文件(bnk、wpk)
+    :param get_data: 是否获取音频文件数据
+    :return:
+    """
     # 解析音频文件
     audio_ext = os.path.splitext(audio_file)[-1]
     if audio_ext == '.wpk':
-        audio_files = WPK(audio_file).files
+        wpk = WPK(audio_file)
+        audio_files = wpk.files, wpk.get_files_data
     else:
-        audio_files = BNK(audio_file).get_data_files()
-        if not audio_files:
-            # 这说明bnk中没有音频数据, 直接返回
-            return []
-    return audio_files
+        bnk = BNK(audio_file)
+        if data := bnk.get_data_files():
+            audio_files = data, lambda: bnk.objects['DATA'].get_files(data)
+        else:
+            audio_files = [], lambda: None
+
+    if get_data:
+        audio_files[1]()
+
+    return audio_files[0]
 
 
-def get_audio_hashtable(bin_file: Union[str, List[StringHash]], event_file):
+def get_event_hashtable(bin_file: Union[str, List[StringHash]], event_file):
     """
     根据皮肤bin文件以及音频事件, 提取事件哈希表
     :param bin_file:
@@ -174,8 +187,27 @@ def get_audio_hashtable(bin_file: Union[str, List[StringHash]], event_file):
     hirc = event.objects[b'HIRC']
 
     # 获取音频ID于事件哈希表
-    audio_hashtable = _get_audio_hashtable(hirc, read_strings)
-    return audio_hashtable
+    event_hash = _get_event_hashtable(hirc, read_strings)
+    return event_hash
+
+
+def get_audio_hashtable(event_hashtable, audio_file):
+    """
+    提供事件哈希表和音频文件, 返回事件对应音频文件ID哈希表
+    :param event_hashtable: get_event_hashtable()
+    :param audio_file:
+    :return:
+    """
+
+    if not (audio_files := get_audio_files(audio_file, False)):
+        return
+
+    ret = defaultdict(list)
+    for ht in event_hashtable:
+        for file in audio_files:
+            if ht.hash == file.id:
+                ret[ht.string].append(file.id)
+    return ret
 
 
 def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_cli=None, worker=None):
@@ -193,6 +225,7 @@ def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_c
         raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
 
     audio_files = get_audio_files(audio_file)
+
     with ThreadPoolExecutor(max_workers=worker) as executor:
         future_to_path = {
             executor.submit(file.save_file, os.path.join(out_dir, file.filename or f'{file.id}.wem'), wem,
@@ -205,10 +238,9 @@ def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_c
                 log.error(f'提取文件出错: {exc}, 出错文件: {path}')
 
 
-def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir=None, ext=None,
+def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir, ext=None,
                   vgmstream_cli=None,
-                  wem=True,
-                  data=False):
+                  wem=True):
     """
     通过皮肤信息文件以及事件、资源文件, 提取音频文件, 支持转码
     :param bin_file: 皮肤信息bin文件或直接提供事件哈希表
@@ -218,20 +250,16 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     :param ext: 输出文件后缀名, 如果不为wem则自动转码, 见下
     :param vgmstream_cli: vgmstream_cli程序, 用来解码
     :param wem: 如果转码是否保留wem文件
-    :param data: 数据模式, 不提取文件只返回对应表
     :return:
     """
     if ext and ext != 'wem' and not vgmstream_cli:
         raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
 
-    if not data and not out_dir:
-        raise TypeError('缺少关键性参数 out_dir 输出目录')
-
-    audio_hashtable = get_audio_hashtable(bin_file, event_file)
+    audio_hashtable = get_event_hashtable(bin_file, event_file)
 
     if not (audio_files := get_audio_files(audio_file)):
         return
-    
+
     # 去重
     temp = {}
     for ht in audio_hashtable:
