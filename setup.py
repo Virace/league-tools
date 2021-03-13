@@ -4,12 +4,12 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 18:48
-# @Update  : 2021/3/12 14:29
+# @Update  : 2021/3/14 0:34
 # @Detail  : 
 
 import setuptools
 
-version = '1.0.0a4'
+version = '1.0.0a5'
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -37,3 +37,4 @@ setuptools.setup(
     python_requires=">=3.8",
 
 )
+
