@@ -4,17 +4,17 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2021/3/9 2:18
+# @Update  : 2021/3/14 0:31
 # @Detail  : 
 
 # -*- coding:utf-8 -*-
 # Author:Virace
 
-import struct
-import logging
-from typing import *
-from io import IOBase, BytesIO
 import io
+import logging
+import struct
+from io import IOBase, BytesIO
+from typing import *
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class BinaryReader:
         before = self.buffer.tell()
         d1 = self.buffer.read(length)
         if length > len(d1):
-            return
+            return None if one else []
         data = struct.unpack(fmt, d1)
         log.debug(f'{fmt}: {length}, before: {before}, after: {self.buffer.tell()}')
         return data[0] if one else data
@@ -133,6 +133,40 @@ class BinaryReader:
         log.debug(f'current point3: {self.buffer.tell()}')
         return point
 
+    def find_by_signature(self, sub: Union[bytearray, list, str], start=False):
+        class TempException(Exception):
+            def __init__(self, point):
+                self.point = point
+
+        if isinstance(sub, str):
+            sub = bytes(sub.encode('utf-8'))
+        elif isinstance(sub, list):
+            sub = bytes(sub)
+
+        if start:
+            self.buffer.seek(0, 0)
+
+        temp = self.bytes()
+
+        length = len(sub)
+
+        try:
+            for i in range(len(temp) - length):
+                data = temp[i:length + i]
+                if len(data) != length:
+                    continue
+
+                for j in range(length):
+                    if sub[j] == 0x3F:
+                        continue
+                    if data[j] != sub[j]:
+                        break
+                    if j == length - 1 and data[j] == sub[j]:
+                        raise TempException(i + length + 1)
+        except TempException as e:
+            self.buffer.seek(e.point, 0)
+            return e.point
+
     def is_end(self):
         """
         是否为流结尾
@@ -143,3 +177,4 @@ class BinaryReader:
     def __del__(self):
         if getattr(self, 'buffer', None):
             self.buffer.close()
+
