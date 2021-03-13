@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/13 2:0
+# @Update  : 2021/3/13 17:27
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -19,6 +19,7 @@ from lol_voice.base import WemFile
 from lol_voice.formats.BIN import BIN, StringHash
 from lol_voice.formats.BNK import BNK, HIRC
 from lol_voice.formats.WPK import WPK
+from lol_voice.tools.Binary import BinaryReader
 
 log = logging.getLogger(__name__)
 
@@ -143,29 +144,37 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
     return res
 
 
-def get_audio_files(audio_file, get_data=True) -> List[WemFile]:
+def get_audio_files(audio_file: Union[str, bytes], get_data=True) -> List[WemFile]:
     """
     提供音频文件, 返回文件列表
     :param audio_file: 音频文件(bnk、wpk)
     :param get_data: 是否获取音频文件数据
     :return:
     """
-    # 解析音频文件
-    audio_ext = os.path.splitext(audio_file)[-1]
+
+    if isinstance(audio_file, str):
+        audio_ext = os.path.splitext(audio_file)[-1]
+    elif isinstance(audio_file, bytes):
+        br = BinaryReader(audio_file)
+        head = br.customize('4s')
+        audio_ext = '.wpk' if head == b'r3d2' else '.bnk'
+    else:
+        return []
+
     if audio_ext == '.wpk':
         wpk = WPK(audio_file)
-        audio_files = wpk.files, wpk.get_files_data
+        audio_files, data_call = wpk.files, wpk.get_files_data
     else:
         bnk = BNK(audio_file)
         if data := bnk.get_data_files():
-            audio_files = data, lambda: bnk.objects['DATA'].get_files(data)
+            audio_files, data_call = data, lambda: bnk.objects['DATA'].get_files(data)
         else:
-            audio_files = [], lambda: None
+            audio_files, data_call = [], lambda: None
 
     if get_data:
-        audio_files[1]()
+        data_call()
 
-    return audio_files[0]
+    return audio_files
 
 
 def get_event_hashtable(bin_file: Union[str, List[StringHash]], event_file):
@@ -287,4 +296,3 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
                         pass
                     # executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
                 # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
-
