@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/3/9 19:35
+# @Update  : 2021/3/14 3:0
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
@@ -210,12 +210,10 @@ class RSContainer(Section):
     """
     __slots__ = [
         'switch_container_id',
-        'sound_id_amount',
         'sound_ids',
     ]
 
     def _read(self):
-        self.sound_id_amount = 1
         self._data.seek(1)
 
         unk = self._data.customize('<B')
@@ -247,17 +245,14 @@ class RSContainer(Section):
 
         self._data.seek(to_seek)
 
-        self.sound_id_amount = self._data.customize('<L')
+        count = self._data.customize('<L')
 
-        if self.sound_id_amount > 100:
-            return
-
-        self.sound_ids = self._data.customize(f'<{self.sound_id_amount}L', False)
+        self.sound_ids = self._data.customize(f'<{count}L', False)
 
     def __repr__(self):
         return f'{super().__repr__()}, ' \
                f'Switch_Container_Id: {self.switch_container_id}, ' \
-               f'Sound_Id_Amount: {self.sound_id_amount}, ' \
+               f'Sound_Id_Amount: {len(self.sound_ids)}'\
                f'Sound_Ids: {self.sound_ids}'
 
 
@@ -282,7 +277,6 @@ class MusicSegment(Section):
     __slots__ = [
         'music_switch_id',
         'sound_object_id',
-        'music_track_id_amount',
         'music_track_ids',
     ]
 
@@ -292,15 +286,15 @@ class MusicSegment(Section):
         self._data.seek(3)
         self._data.seek(11 + (1 if self._data.customize('<B') != 0 else 0))
 
-        self.music_track_id_amount = self._data.customize('<L')
+        count = self._data.customize('<L')
 
-        self.music_track_ids = self._data.customize(f'<{self.music_track_id_amount}L', False)
+        self.music_track_ids = self._data.customize(f'<{count}L', False)
 
     def __repr__(self):
         return f'{super().__repr__()}, ' \
                f'Music_Switch_Id: {self.music_switch_id}, ' \
                f'Sound_Object_Id: {self.sound_object_id}, ' \
-               f'Music_Track_Id_Amount: {self.music_track_id_amount}, ' \
+               f'Music_Track_Id_Amount: {len(self.music_track_ids)}, ' \
                f'Music_Track_Ids: {self.music_track_ids}'
 
 
@@ -425,4 +419,5 @@ class HIRC(SectionNoId):
 
     def __repr__(self):
         return f'Number_Of_Objects: {self.number_of_objects}'
+
 
