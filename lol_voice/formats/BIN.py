@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/16 0:17
+# @Update  : 2021/3/16 0:27
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
@@ -65,7 +65,7 @@ class BIN(SectionNoId):
     signature = b'\x84\xe3\xd8\x12'
     __slots__ = [
         'hash_tables',
-        'files'
+        'audio_files'
     ]
 
     def _read_old(self):
@@ -125,7 +125,7 @@ class BIN(SectionNoId):
                         res.add(tuple(group))
             else:
                 break
-        self.files = res
+        self.audio_files = res
 
     def get_hash_table(self) -> List:
         """
