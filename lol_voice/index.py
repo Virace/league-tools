@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/13 17:27
+# @Update  : 2021/3/15 12:20
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -167,7 +167,7 @@ def get_audio_files(audio_file: Union[str, bytes], get_data=True) -> List[WemFil
     else:
         bnk = BNK(audio_file)
         if data := bnk.get_data_files():
-            audio_files, data_call = data, lambda: bnk.objects['DATA'].get_files(data)
+            audio_files, data_call = data, lambda: bnk.objects[b'DATA'].get_files(data)
         else:
             audio_files, data_call = [], lambda: None
 
