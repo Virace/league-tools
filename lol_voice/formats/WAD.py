@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/12 13:8
+# @Update  : 2021/3/15 17:41
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -140,10 +140,15 @@ class WAD(SectionNoId):
         ret = []
         for path in paths:
             path_hash = self.get_hash(path)
+            t = False
             for file in self.files:
                 if path_hash == file.path_hash:
+                    t = True
                     file_path = os.path.join(out_dir, os.path.normpath(path))
                     ret.append(self._extract(file, file_path, raw))
+            if raw and not t:
+                # 源数据模式保证文件顺序与paths相同
+                ret.append(None)
         return ret
 
     def extract_hash(self, hashtable: Dict[str, str], out_dir: str = '') -> List:
