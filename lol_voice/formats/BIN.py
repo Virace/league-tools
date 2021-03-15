@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/15 1:46
+# @Update  : 2021/3/16 0:17
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
@@ -64,10 +64,11 @@ class BIN(SectionNoId):
     head = b'PROP'
     signature = b'\x84\xe3\xd8\x12'
     __slots__ = [
-        'hash_tables'
+        'hash_tables',
+        'files'
     ]
 
-    def _read(self):
+    def _read_old(self):
         if self._data.customize('4s') != self.head:
             raise ValueError('文件类型错误.')
         self.hash_tables = []
@@ -83,6 +84,48 @@ class BIN(SectionNoId):
                         string=item,
                         hash=str_fnv_32(item)
                     ))
+
+    def _read(self):
+        if self._data.customize('4s') != self.head:
+            raise ValueError('文件类型错误.')
+        self.hash_tables = []
+        head = 'ASSETS/Sounds/Wwise2016'
+        res = set()
+        temp = []
+        self._data.seek(4, 0)
+        while not self._data.is_end():
+            if self._data.find(head) != -1:
+                group = []
+                #         uint32: 文件数量
+                #         FOR EACH (文件数量) {
+                #             uint16: 字符串长度
+                #             byte[]: 文件路径字符串
+                #         } END FOR
+                self._data.seek(-6 - len(head), 1)
+                item_length = self._data.customize('<L')
+                for i in range(item_length):
+                    length = self._data.customize('<H')
+                    item = self._data.str(length)
+                    if item not in temp:
+                        group.append(item)
+                    else:
+                        temp.append(temp)
+
+                if self._data.bytes(4) == self.signature:
+                    self._data.seek(6)
+                    count = self._data.customize('<L')
+                    for i in range(count):
+                        length = self._data.customize('<H')
+                        item = self._data.str(length)
+                        self.hash_tables.append(StringHash(
+                            string=item,
+                            hash=str_fnv_32(item)
+                        ))
+                    if group:
+                        res.add(tuple(group))
+            else:
+                break
+        self.files = res
 
     def get_hash_table(self) -> List:
         """
@@ -102,7 +145,7 @@ class BIN(SectionNoId):
             data = json.load(open(data, encoding='utf-8'))
         return [StringHash(item['string'], item['hash'], item['switch_id']) for item in data]
 
-    def get_audio_files(self, head='ASSETS/Sounds/Wwise2016') -> List:
+    def _get_audio_files(self, head='ASSETS/Sounds/Wwise2016') -> List:
         """
         获取于音频有关的文件列表
 
@@ -142,4 +185,5 @@ class BIN(SectionNoId):
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
+
 
