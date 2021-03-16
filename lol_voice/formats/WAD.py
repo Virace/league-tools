@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/15 17:41
+# @Update  : 2021/3/17 0:21
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -14,7 +14,7 @@ import gzip
 import logging
 import os
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List, Dict, Union, AnyStr, Callable
 
 import xxhash
 import zstd
@@ -91,10 +91,10 @@ class WAD(SectionNoId):
     @staticmethod
     def get_hash(path: str):
         xx = xxhash.xxh64()
-        xx.update(path.encode('utf-8'))
+        xx.update(path.lower().encode('utf-8'))
         return int(xx.hexdigest(), 16)
 
-    def _extract(self, file, file_path, raw):
+    def _extract(self, file, file_path, raw=False):
         self._data.seek(file.offset, 0)
         this = self._data.bytes(file.compressed_file_size)
         # https://github.com/Pupix/lol-wad-parser/blob/2de5a9dafb77b7165b568316d5c1b1f8b5e898f2/lib/extract.js#L11
@@ -127,7 +127,7 @@ class WAD(SectionNoId):
                 f.write(data)
             return file_path
 
-    def extract(self, paths: List[str], out_dir: str = '', raw=False) -> List:
+    def extract(self, paths: List[str], out_dir: Union[AnyStr, Callable] = '', raw=False) -> List:
         """
         提供需要解包的文件路径, 解包wad文件
         :param paths: 文件路径列表, 例如['assets/characters/aatrox/skins/base/aatrox.skn']
@@ -144,7 +144,10 @@ class WAD(SectionNoId):
             for file in self.files:
                 if path_hash == file.path_hash:
                     t = True
-                    file_path = os.path.join(out_dir, os.path.normpath(path))
+                    if isinstance(out_dir, Callable):
+                        file_path = out_dir(path)
+                    else:
+                        file_path = os.path.join(out_dir, os.path.normpath(path))
                     ret.append(self._extract(file, file_path, raw))
             if raw and not t:
                 # 源数据模式保证文件顺序与paths相同
@@ -167,3 +170,4 @@ class WAD(SectionNoId):
                 self._extract(file, file_path)
                 ret.append(file_path)
         return ret
+
