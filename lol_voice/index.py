@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/3/15 12:20
+# @Update  : 2021/4/9 0:17
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -13,7 +13,7 @@ import logging
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Union
+from typing import List, Union, Optional
 
 from lol_voice.base import WemFile
 from lol_voice.formats.BIN import BIN, StringHash
@@ -144,11 +144,13 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
     return res
 
 
-def get_audio_files(audio_file: Union[str, bytes], get_data=True) -> List[WemFile]:
+def get_audio_files(audio_file: Union[str, bytes], get_data=True, hash_table: Optional[List[int]] = None) \
+        -> List[WemFile]:
     """
     提供音频文件, 返回文件列表
     :param audio_file: 音频文件(bnk、wpk)
     :param get_data: 是否获取音频文件数据
+    :param hash_table: 哈希表
     :return:
     """
 
@@ -163,13 +165,25 @@ def get_audio_files(audio_file: Union[str, bytes], get_data=True) -> List[WemFil
 
     if audio_ext == '.wpk':
         wpk = WPK(audio_file)
+
+        if hash_table:
+            for file in wpk.files:
+                if file.id not in hash_table:
+                    wpk.files.remove(file)
+
         audio_files, data_call = wpk.files, wpk.get_files_data
     else:
         bnk = BNK(audio_file)
         if data := bnk.get_data_files():
-            audio_files, data_call = data, lambda: bnk.objects[b'DATA'].get_files(data)
+
+            if hash_table:
+                for file in data.files:
+                    if file.id not in hash_table:
+                        data.files.remove(file)
+
+            audio_files, data_call = data, lambda x: bnk.objects[b'DATA'].get_files(data)
         else:
-            audio_files, data_call = [], lambda: None
+            audio_files, data_call = [], lambda x: None
 
     if get_data:
         data_call()
