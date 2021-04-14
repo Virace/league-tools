@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/3/16 0:27
+# @Update  : 2021/4/15 2:28
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
@@ -69,7 +69,7 @@ class BIN(SectionNoId):
     ]
 
     def _read_old(self):
-        if self._data.customize('4s') != self.head:
+        if self._data.customize('<4s') != self.head:
             raise ValueError('文件类型错误.')
         self.hash_tables = []
         while not self._data.is_end():
@@ -86,7 +86,7 @@ class BIN(SectionNoId):
                     ))
 
     def _read(self):
-        if self._data.customize('4s') != self.head:
+        if self._data.customize('<4s') != self.head:
             raise ValueError('文件类型错误.')
         self.hash_tables = []
         head = 'ASSETS/Sounds/Wwise2016'

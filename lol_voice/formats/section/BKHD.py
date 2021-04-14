@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:33
-# @Update  : 2021/3/9 19:28
+# @Update  : 2021/4/15 2:28
 # @Detail  : Wwise bnk文件, BKHD块
 
 from lol_voice.base import SectionNoId
@@ -32,7 +32,7 @@ class BKHD(SectionNoId):
     ]
 
     def _read(self):
-        self.section_length, self.sb_version, self.sb_id, *self.unknown = self._data.customize('LLLLL', False)
+        self.section_length, self.sb_version, self.sb_id, *self.unknown = self._data.customize('<LLLLL', False)
 
     def __repr__(self):
         return f'Section_Length: {self.section_length}, ' \

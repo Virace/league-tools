@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/3/14 3:0
+# @Update  : 2021/4/15 2:28
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
@@ -189,7 +189,7 @@ class Event(Section):
 
     def _read(self):
         self.event_actions = []
-        count = self._data.customize('B')
+        count = self._data.customize('<B')
         if count:
             self.event_actions = list(self._data.customize(f'<{count}L', False))
 
@@ -374,7 +374,7 @@ class HIRC(SectionNoId):
 
     def _read(self):
         self.number_of_objects = 0
-        number = self._data.customize('L')
+        number = self._data.customize('<L')
 
         for i in range(number):
             section_type, section_length = self._data.customize('<BL', False)

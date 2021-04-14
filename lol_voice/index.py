@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/4/9 0:17
+# @Update  : 2021/4/15 2:28
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -158,7 +158,7 @@ def get_audio_files(audio_file: Union[str, bytes], get_data=True, hash_table: Op
         audio_ext = os.path.splitext(audio_file)[-1]
     elif isinstance(audio_file, bytes):
         br = BinaryReader(audio_file)
-        head = br.customize('4s')
+        head = br.customize('<4s')
         audio_ext = '.wpk' if head == b'r3d2' else '.bnk'
     else:
         return []

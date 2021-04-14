@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 0:57
-# @Update  : 2021/3/13 0:55
+# @Update  : 2021/4/15 2:28
 # @Detail  : 
 
 from lol_voice.base import SectionNoId, WemFile
@@ -19,7 +19,7 @@ class WPK(SectionNoId):
     ]
 
     def _read(self):
-        head = self._data.customize('4s')
+        head = self._data.customize('<4s')
         assert head == b'r3d2', f'WPK文件头错误. {head}'
         self.files = []
         self.version = self._data.customize('<L')

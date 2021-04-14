@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:36
-# @Update  : 2021/3/13 0:20
+# @Update  : 2021/4/15 2:28
 # @Detail  : Wwise bnk文件解析, 目前仅对BKHD、HIRC、DIDX、DATA四种块信息进行处理
 
 import logging
@@ -37,7 +37,7 @@ class BNK(SectionNoId):
     def _read(self):
         self.objects = {}
         while not self._data.is_end():
-            head, length = self._data.customize('4sL', False)
+            head, length = self._data.customize('<4sL', False)
 
             _call = self.parse.get(head)
             if _call:
