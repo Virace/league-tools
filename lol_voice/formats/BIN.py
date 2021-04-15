@@ -4,12 +4,12 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/4/15 2:28
+# @Update  : 2021/4/15 13:44
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
 from dataclasses import dataclass
-from typing import Union, List
+from typing import List, Union
 
 from lol_voice.base import SectionNoId
 
@@ -44,6 +44,7 @@ class StringHash:
                     return obj.__dict__
 
                 return json.JSONEncoder.default(self, obj)
+
         return Encoder
 
     def __eq__(self, other):
@@ -185,5 +186,3 @@ class BIN(SectionNoId):
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
-
-

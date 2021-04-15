@@ -4,11 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2021/3/16 3:33
+# @Update  : 2021/4/15 13:45
 # @Detail  : 块 基类
 
 import os
-import gc
 import subprocess
 from dataclasses import dataclass
 from io import BytesIO
@@ -106,7 +105,6 @@ class WemFile:
                 if not wem:
                     os.remove(wem_path)
         del data
-        gc.collect()
 
     def __iter__(self):
         return [self.id, self.offset, self.length]

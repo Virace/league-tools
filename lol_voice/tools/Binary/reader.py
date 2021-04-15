@@ -4,16 +4,13 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2021/3/14 0:31
+# @Update  : 2021/4/15 13:45
 # @Detail  : 
-
-# -*- coding:utf-8 -*-
-# Author:Virace
 
 import io
 import logging
 import struct
-from io import IOBase, BytesIO
+from io import BytesIO, IOBase
 from typing import *
 
 log = logging.getLogger(__name__)
@@ -177,4 +174,3 @@ class BinaryReader:
     def __del__(self):
         if getattr(self, 'buffer', None):
             self.buffer.close()
-
