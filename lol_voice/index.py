@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/4/15 2:28
+# @Update  : 2021/4/15 16:36
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -13,7 +13,7 @@ import logging
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 from lol_voice.base import WemFile
 from lol_voice.formats.BIN import BIN, StringHash
@@ -37,38 +37,26 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
     :return:
     """
 
-    def obj_find_one(obj, key, value):
-        """
-        查询对象数组中key属性等于value的对象
-        :param obj: 对象数组
-        :param key: 对象属性名
-        :param value: 要查找的属性值
-        :return:
-        """
-        for item in obj:
-            if getattr(item, key) == value:
-                return item
-
     res = []
     for string in action_hash:
         # 根据已知事件循环
         _hash = string.hash
 
         # 根据事件ID查找事件
-        event = obj_find_one(hirc.events, 'object_id', _hash)
+        event = hirc.events.get(_hash, None)
         if not event:
             continue
 
         # 循环事件动作
         for ea in event.event_actions:
 
-            event_action = obj_find_one(hirc.event_actions, 'object_id', ea)
+            event_action = hirc.event_actions.get(ea, None)
 
             if event_action and event_action.action_type == 4:
 
                 reference_id = event_action.reference_id
 
-                for sound in hirc.sounds:
+                for sound in hirc.sounds.values():
                     if sound.sound_object_id == reference_id or sound.object_id == reference_id:
                         res.append(
                             StringHash(
@@ -83,10 +71,10 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
                 # ######################################################## #
                 # ######################################################## #
 
-                for ms in hirc.music_segments:
+                for ms in hirc.music_segments.values():
                     if ms.sound_object_id == reference_id:
                         for track in ms.music_track_ids:
-                            music_track = obj_find_one(hirc.music_tracks, 'object_id', track)
+                            music_track = hirc.music_tracks.get(track, None)
                             if not music_track:
                                 continue
 
@@ -98,15 +86,17 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
                                 )
                             )
 
-                for mp in hirc.music_playlist_containers:
+                for mp in hirc.music_playlist_containers.values():
                     if mp.sound_object_id == reference_id:
                         for mp_mt_id in mp.music_track_ids:
-                            music_segment = obj_find_one(hirc.music_segments, 'object_id', mp_mt_id)
+                            # music_segment = obj_find_one(hirc.music_segments, 'object_id', mp_mt_id)
+                            music_segment = hirc.music_segments.get(mp_mt_id, None)
                             if not music_segment:
                                 continue
 
                             for ms_id in music_segment.music_track_ids:
-                                music_track = obj_find_one(hirc.music_tracks, 'object_id', ms_id)
+                                # music_track = obj_find_one(hirc.music_tracks, 'object_id', ms_id)
+                                music_track = hirc.music_tracks.get(ms_id, None)
                                 if not music_track:
                                     continue
 
@@ -124,15 +114,15 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
                 # ######################################################## #
                 # ######################################################## #
 
-                switch_container = obj_find_one(hirc.switch_containers, 'object_id', reference_id)
+                switch_container = hirc.switch_containers.get(reference_id, None)
                 if not switch_container:
                     continue
 
-                for rsc in hirc.rs_containers:
+                for rsc in hirc.rs_containers.values():
                     if rsc.switch_container_id == reference_id:
                         for rsc_sid in rsc.sound_ids:
-                            for sound in hirc.sounds:
-                                if rsc_sid == sound.object_id or rsc_sid == sound.sound_object_id:
+                            for sid, sound in hirc.sounds.items():
+                                if rsc_sid == sid or rsc_sid == sound.sound_object_id:
                                     res.append(
                                         StringHash(
                                             string=string.string,
@@ -203,11 +193,14 @@ def get_event_hashtable(bin_file: Union[str, List[StringHash]], event_file):
         # 获取事件哈希表
         read_strings = b1.hash_tables.copy()
     else:
-        read_strings = bin_file
+        read_strings = bin_file.copy()
     # 解析事件文件
     event = BNK(event_file)
 
-    hirc = event.objects[b'HIRC']
+    try:
+        hirc = event.objects[b'HIRC']
+    except KeyError:
+        return
 
     # 获取音频ID于事件哈希表
     event_hash = _get_event_hashtable(hirc, read_strings)
@@ -300,13 +293,10 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
                     temp.update({file.id: os.path.join(_dir, name)})
                     logging.debug(f'Event: {ht.string}, File: {name}')
                     file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
-                    # executor.submit(file.static_save_file, file.data, os.path.join(_dir, name), wem,
-                    #                 vgmstream_cli=vgmstream_cli)
+
                 else:
                     # 创建链接
                     try:
                         os.symlink(temp[file.id], os.path.join(_dir, name))
                     except FileExistsError:
                         pass
-                    # executor.submit(os.link, temp[file.id], os.path.join(_dir, name))
-                # file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)

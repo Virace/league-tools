@@ -4,11 +4,11 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/4/15 2:28
+# @Update  : 2021/4/15 13:50
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
-from typing import List
+from typing import Dict
 
 from lol_voice.base import Section, SectionNoId
 
@@ -252,7 +252,7 @@ class RSContainer(Section):
     def __repr__(self):
         return f'{super().__repr__()}, ' \
                f'Switch_Container_Id: {self.switch_container_id}, ' \
-               f'Sound_Id_Amount: {len(self.sound_ids)}'\
+               f'Sound_Id_Amount: {len(self.sound_ids)}' \
                f'Sound_Ids: {self.sound_ids}'
 
 
@@ -346,16 +346,16 @@ class HIRC(SectionNoId):
     } END FOR
     """
 
-    sounds: List[Sound] = list()
-    event_actions: List[EventAction] = list()
-    events: List[Event] = list()
-    rs_containers: List[RSContainer] = list()
-    switch_containers: List[SwitchContainer] = list()
-    actor_mixer: List[ActorMixer] = list()
-    music_segments: List[MusicSegment] = list()
-    music_tracks: List[MusicTrack] = list()
-    music_playlist_containers: List[MusicPlaylistContainer] = list()
-    attenuations: List[Attenuation] = list()
+    sounds: Dict[int, Sound] = dict()
+    event_actions: Dict[int, EventAction] = dict()
+    events: Dict[int, Event] = dict()
+    rs_containers: Dict[int, RSContainer] = dict()
+    switch_containers: Dict[int, SwitchContainer] = dict()
+    actor_mixer: Dict[int, ActorMixer] = dict()
+    music_segments: Dict[int, MusicSegment] = dict()
+    music_tracks: Dict[int, MusicTrack] = dict()
+    music_playlist_containers: Dict[int, MusicPlaylistContainer] = dict()
+    attenuations: Dict[int, Attenuation] = dict()
 
     def __init__(self, data):
         self._parse = {
@@ -381,43 +381,44 @@ class HIRC(SectionNoId):
             _call, _set = self._parse.get(section_type, (None, None))
             if _call:
                 data = self._data.binary(section_length)
-                _set(_call(data))
+                item = _call(data)
+                _set({
+                    item.object_id: item
+                })
                 self.number_of_objects += 1
             else:
                 self._data.skip(section_length)
             log.debug(f'Type: {section_type}, Length: {section_length}')
 
     def _set_actor_mixer(self, data):
-        self.actor_mixer.append(data)
+        self.actor_mixer.update(data)
 
     def _set_attenuations(self, data):
-        self.attenuations.append(data)
+        self.attenuations.update(data)
 
     def _set_event_actions(self, data):
-        self.event_actions.append(data)
+        self.event_actions.update(data)
 
     def _set_events(self, data):
-        self.events.append(data)
+        self.events.update(data)
 
     def _set_music_playlist_containers(self, data):
-        self.music_playlist_containers.append(data)
+        self.music_playlist_containers.update(data)
 
     def _set_music_segments(self, data):
-        self.music_segments.append(data)
+        self.music_segments.update(data)
 
     def _set_music_tracks(self, data):
-        self.music_tracks.append(data)
+        self.music_tracks.update(data)
 
     def _set_rs_containers(self, data):
-        self.rs_containers.append(data)
+        self.rs_containers.update(data)
 
     def _set_sounds(self, data):
-        self.sounds.append(data)
+        self.sounds.update(data)
 
     def _set_switch_containers(self, data):
-        self.switch_containers.append(data)
+        self.switch_containers.update(data)
 
     def __repr__(self):
         return f'Number_Of_Objects: {self.number_of_objects}'
-
-
