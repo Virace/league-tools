@@ -4,14 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/4/30 2:21
+# @Update  : 2021/5/16 15:40
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import logging
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Union
 
@@ -309,7 +309,13 @@ def get_audio_hashtable(event_hashtable, audio_file):
         for file in audio_files:
             if ht.hash == file.id:
                 ret[ht.string].append(file.id)
-    return ret
+
+    # 尝试排序
+    sort_keys = sorted(ret.keys())
+    order_ret = OrderedDict()
+    for key in sort_keys:
+        order_ret[key] = ret[key]
+    return order_ret
 
 
 def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_cli=None, worker=None):
