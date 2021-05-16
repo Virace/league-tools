@@ -24,6 +24,7 @@
 ### 安装
 
 
+`pip install lol-voice==1.0.0a6`
 
 `pip install -e git+https://github.com/Virace/py-bnk-extract@package#egg=lol_voice`
 
