@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/5/16 15:40
+# @Update  : 2021/5/17 17:0
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -257,9 +257,9 @@ def get_audio_files(audio_file: Union[str, bytes], get_data=True, hash_table: Op
                     if file.id not in hash_table:
                         data.files.remove(file)
 
-            audio_files, data_call = data, lambda x: bnk.objects[b'DATA'].get_files(data)
+            audio_files, data_call = data, lambda x=1: bnk.objects[b'DATA'].get_files(data)
         else:
-            audio_files, data_call = [], lambda x: None
+            audio_files, data_call = [], lambda x=1: None
 
     if get_data:
         data_call()
@@ -392,3 +392,4 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
                         os.symlink(temp[file.id], os.path.join(_dir, name))
                     except FileExistsError:
                         pass
+
