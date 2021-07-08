@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/4/15 13:50
+# @Update  : 2021/7/9 1:34
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
@@ -323,6 +323,22 @@ class MusicTrack(Section):
                f'Music Container Id: {self.music_container_id}'
 
 
+class MusicSwitch(Section):
+    """
+    struct music_switch {
+        uint32_t self_id;
+        uint32_t some_id;
+    };
+    """
+    __slots__ = [
+        'some_id',
+    ]
+
+    def _read(self):
+        self._data.seek(4)
+        self.some_id = self._data.customize('<L')
+
+
 class MusicPlaylistContainer(MusicSegment):
     pass
 
@@ -354,6 +370,7 @@ class HIRC(SectionNoId):
     actor_mixer: Dict[int, ActorMixer] = dict()
     music_segments: Dict[int, MusicSegment] = dict()
     music_tracks: Dict[int, MusicTrack] = dict()
+    music_switches: Dict[int, MusicSwitch] = dict()
     music_playlist_containers: Dict[int, MusicPlaylistContainer] = dict()
     attenuations: Dict[int, Attenuation] = dict()
 
@@ -367,6 +384,7 @@ class HIRC(SectionNoId):
             7: (ActorMixer, self._set_actor_mixer),
             10: (MusicSegment, self._set_music_segments),
             11: (MusicTrack, self._set_music_tracks),
+            12: (MusicSwitch, self._set_music_switches),
             13: (MusicPlaylistContainer, self._set_music_playlist_containers),
             14: (Attenuation, self._set_attenuations)
         }
@@ -411,6 +429,9 @@ class HIRC(SectionNoId):
     def _set_music_tracks(self, data):
         self.music_tracks.update(data)
 
+    def _set_music_switches(self, data):
+        self.music_switches.update(data)
+
     def _set_rs_containers(self, data):
         self.rs_containers.update(data)
 
@@ -422,3 +443,4 @@ class HIRC(SectionNoId):
 
     def __repr__(self):
         return f'Number_Of_Objects: {self.number_of_objects}'
+

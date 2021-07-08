@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/4/15 13:44
+# @Update  : 2021/7/9 1:34
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
@@ -34,7 +34,8 @@ def str_fnv_32(name: str):
 class StringHash:
     string: str
     hash: int
-    switch_id: int = 0
+    container_id: int = 0
+    music_segment_id: int = 0
 
     @staticmethod
     def dump_cls():
@@ -48,17 +49,17 @@ class StringHash:
         return Encoder
 
     def __eq__(self, other):
-        if self.string == other.string and self.hash == other.hash and self.switch_id == other.switch_id:
+        if self.string == other.string and self.hash == other.hash and self.container_id == other.switch_id:
             return True
         return False
 
     def __hash__(self):
-        return hash(f'{self.string}{self.hash}{self.switch_id}')
+        return hash(f'{self.string}{self.hash}{self.container_id}')
 
     def __repr__(self):
         return f'String: {self.string}, ' \
                f'Hash: {self.hash}, ' \
-               f'Switch_Id: {self.switch_id}'
+               f'Container_Id: {self.container_id}'
 
 
 class BIN(SectionNoId):
@@ -186,3 +187,5 @@ class BIN(SectionNoId):
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
+
+

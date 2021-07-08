@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/5/17 17:0
+# @Update  : 2021/7/8 20:45
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -57,9 +57,34 @@ def get_audio_id_by_music_segments(event_str, event_id, music_segments, music_tr
                         StringHash(
                             string=event_str,
                             hash=music_track.file_id,
-                            switch_id=ms.object_id
+                            music_segment_id=ms.object_id
                         )
                     )
+    return res
+
+
+def get_audio_id_by_music_switches(event_str, event_id, music_switches, music_playlist_containers, music_segments,
+                                   music_tracks):
+    res = []
+    if music_switch := music_switches.get(event_id, None):
+        for mp in music_playlist_containers.values():
+            if music_switch.some_id == mp.music_switch_id:
+                for mp_mt_id in mp.music_track_ids:
+                    if not (music_segment := music_segments.get(mp_mt_id, None)):
+                        continue
+                    for ms_id in music_segment.music_track_ids:
+
+                        if not (music_track := music_tracks.get(ms_id, None)):
+                            continue
+
+                        res.append(
+                            StringHash(
+                                string=event_str,
+                                hash=music_track.file_id,
+                                container_id=mp.object_id,
+                                music_segment_id=music_segment.object_id
+                            )
+                        )
     return res
 
 
@@ -82,7 +107,7 @@ def get_audio_id_by_music_playlist_containers(event_str, event_id, music_playlis
                         StringHash(
                             string=event_str,
                             hash=music_track.file_id,
-                            switch_id=music_segment.object_id
+                            music_segment_id=music_segment.object_id
                         )
                     )
     return res
@@ -99,9 +124,34 @@ def get_audio_hash_by_rs_containers(event_str, event_id, rs_containers, sounds):
                             StringHash(
                                 string=event_str,
                                 hash=sound.audio_id,
-                                switch_id=rsc.object_id
+                                music_segment_id=rsc.object_id
                             )
                         )
+    return res
+
+
+def special_functions(music_playlist_containers, music_segments, music_track):
+    """
+        // separate "root" folder for music playlists that do not belong to anything else; maybe just dj sona?
+    :param music_playlist_containers:
+    :param music_segments:
+    :param music_track:
+    :return:
+    """
+    res = []
+    for mp in music_playlist_containers.values():
+        if not mp.music_switch_id:
+            for mp_mt_id in mp.music_track_ids:
+                if not (music_segment := music_segments.get(mp_mt_id, None)):
+                    continue
+                res.append(
+                    StringHash(
+                        string='Music playlists',
+                        hash=music_track.file_id,
+                        container_id=mp.object_id,
+                        music_segment_id=music_segment.object_id
+                    )
+                )
     return res
 
 
@@ -136,86 +186,28 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
                 reference_id = event_action.reference_id
 
                 res.extend(get_audio_id_by_songs(string.string, reference_id, hirc.sounds))
-                # for sound in hirc.sounds.values():
-                #     if reference_id in [sound.object_id, sound.sound_object_id]:
-                #         res.append(
-                #             StringHash(
-                #                 string=string.string,
-                #                 hash=sound.audio_id
-                #             )
-                #         )
 
-                # ######################################################## #
-                # ######################################################## #
-                # ####################以下代码未测试###################### #
-                # ######################################################## #
-                # ######################################################## #
                 res.extend(get_audio_id_by_music_segments(string.string, reference_id, hirc.music_segments,
                                                           hirc.music_tracks))
-                # for ms in hirc.music_segments.values():
-                #     if ms.sound_object_id == reference_id:
-                #         for track in ms.music_track_ids:
-                #             if music_track := hirc.music_tracks.get(track, None):
-                #                 res.append(
-                #                     StringHash(
-                #                         string=string.string,
-                #                         hash=music_track.file_id,
-                #                         switch_id=ms.object_id
-                #                     )
-                #                 )
+                res.extend(get_audio_id_by_music_switches(string.string, reference_id,
+                                                          hirc.music_switches,
+                                                          hirc.music_playlist_containers,
+                                                          hirc.music_segments,
+                                                          hirc.music_tracks))
+
                 res.extend(
                     get_audio_id_by_music_playlist_containers(string.string, reference_id,
                                                               hirc.music_playlist_containers,
                                                               hirc.music_segments,
                                                               hirc.music_tracks)
                 )
-                # for mp in hirc.music_playlist_containers.values():
-                #     if mp.sound_object_id == reference_id:
-                #         for mp_mt_id in mp.music_track_ids:
-                #             # music_segment = obj_find_one(hirc.music_segments, 'object_id', mp_mt_id)
-                #             music_segment = hirc.music_segments.get(mp_mt_id, None)
-                #             if not music_segment:
-                #                 continue
-                #
-                #             for ms_id in music_segment.music_track_ids:
-                #                 # music_track = obj_find_one(hirc.music_tracks, 'object_id', ms_id)
-                #                 music_track = hirc.music_tracks.get(ms_id, None)
-                #                 if not music_track:
-                #                     continue
-                #
-                #                 res.append(
-                #                     StringHash(
-                #                         string=string.string,
-                #                         hash=music_track.file_id,
-                #                         switch_id=music_segment.object_id
-                #                     )
-                #                 )
 
-                # ######################################################## #
-                # ######################################################## #
-                # ####################以上代码未测试###################### #
-                # ######################################################## #
-                # ######################################################## #
-
-                # switch_container = hirc.switch_containers.get(reference_id, None)
-                # if not switch_container:
-                #     continue
                 res.extend(
                     get_audio_hash_by_rs_containers(string.string, reference_id, hirc.rs_containers, hirc.sounds)
                 )
-
-                # for rsc in hirc.rs_containers.values():
-                #     if rsc.switch_container_id == reference_id:
-                #         for rsc_sid in rsc.sound_ids:
-                #             for sid, sound in hirc.sounds.items():
-                #                 if rsc_sid == sid or rsc_sid == sound.sound_object_id:
-                #                     res.append(
-                #                         StringHash(
-                #                             string=string.string,
-                #                             hash=sound.audio_id,
-                #                             switch_id=rsc.object_id
-                #                         )
-                #                     )
+                res.extend(special_functions(hirc.music_playlist_containers,
+                                             hirc.music_segments,
+                                             hirc.music_tracks))
 
     return res
 
@@ -392,4 +384,3 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
                         os.symlink(temp[file.id], os.path.join(_dir, name))
                     except FileExistsError:
                         pass
-

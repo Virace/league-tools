@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:33
-# @Update  : 2021/4/15 2:28
+# @Update  : 2021/7/9 1:32
 # @Detail  : Wwise bnk文件, BKHD块
 
 from lol_voice.base import SectionNoId
@@ -12,7 +12,7 @@ from lol_voice.base import SectionNoId
 
 class BKHD(SectionNoId):
     """
-    http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)
+    https://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)
     The BKHD section (Bank Header) contains the version number and the SoundBank id.
 
         42 4B 48 44 -- BKHD
@@ -39,3 +39,4 @@ class BKHD(SectionNoId):
                f'SoundBank_Version: {self.sb_version}, ' \
                f'SoundBank_Id: {self.sb_id}, ' \
                f'Unknown: {self.unknown}'
+
