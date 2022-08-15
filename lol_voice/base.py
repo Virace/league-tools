@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2021/4/15 13:45
+# @Update  : 2022/8/16 0:49
 # @Detail  : 块 基类
 
 import os
@@ -22,7 +22,7 @@ class Section:
         '_data'
     ]
 
-    def __init__(self, data: Union[BinaryReader, BytesIO, bytes, str]):
+    def __init__(self, data: Union[BinaryReader, BytesIO, bytes, str, os.PathLike]):
         self._data = data
         if not isinstance(data, BinaryReader):
             self._data = BinaryReader(data)
@@ -116,3 +116,4 @@ class WemFile:
         return f'File_Id: {self.id}, ' \
                f'File_Length: {self.length},' \
                f'File_Name: {self.filename}'
+
