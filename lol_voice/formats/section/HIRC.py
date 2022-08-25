@@ -4,18 +4,22 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2022/8/16 1:06
+# @Update  : 2022/8/26 0:21
 # @Detail  : Wwise bnk文件, HIRC块
 
-import logging
 from typing import Dict
 
-from lol_voice.base import Section, SectionNoId
+from loguru import logger
 
-log = logging.getLogger(__name__)
+from lol_voice.base import SectionBNK, SectionNoIdBNK
 
 
-class Sound(Section):
+# 关于bnk版本
+# https://github.com/Morilli/bnk-extract-GUI/blob/a49f29e6da79b6a8df4123b120a4791f3ee785c2/bnk-extract/sound.c#L272
+# 这个地方不懂，之前也没有遇到错误
+
+
+class Sound(SectionBNK):
     """
     Sound SFX/Sound Voice
 
@@ -55,8 +59,21 @@ class Sound(Section):
     ]
 
     def _read(self):
-        self.is_streamed, self.audio_id, self.source_id, self.sound_type = self._data.customize('<4xBLLL', False)
+        flag = self.bnk_version == 0x58
+
         self._data.seek(4)
+
+        self.is_streamed = self._data.customize('<B')
+
+        if flag:
+            self._data.seek(3)
+
+        self.audio_id, self.source_id, self.sound_type = self._data.customize('<LLL', False)
+        # self.is_streamed, self.audio_id, self.source_id, self.sound_type = self._data.customize('<4xBLLL', False)
+
+        self._data.seek(4 - flag)
+
+        # self._data.seek(4)
         self.sound_object_id = self._data.customize('<L')
 
         # assert self.is_streamed in [0, 1, 2], 'is_streamed(资源类型)范围错误'
@@ -77,7 +94,7 @@ class Sound(Section):
                f'Sound_Type: {self.sound_type}'
 
 
-class EventAction(Section):
+class EventAction(SectionBNK):
     """
     Event Action
     Format:
@@ -167,7 +184,7 @@ class EventAction(Section):
                f'Reference_Id: {self.reference_id}'
 
 
-class Event(Section):
+class Event(SectionBNK):
     """
     Event
     Format:
@@ -190,6 +207,8 @@ class Event(Section):
     def _read(self):
         self.event_actions = []
         count = self._data.customize('<B')
+        if self.bnk_version == 0x58:
+            self._data.seek(3)
         if count:
             self.event_actions = list(self._data.customize(f'<{count}L', False))
 
@@ -198,9 +217,9 @@ class Event(Section):
                f'Event_Acionts: {self.event_actions}'
 
 
-class RSContainer(Section):
+class RSContainer(SectionBNK):
     """
-    https://github.com/Morilli/bnk-extract/blob/5b1fd19e41b36addba351491c477765ad8a2ae09/sound.c#L235
+    https://github.com/Morilli/bnk-extract-GUI/blob/a49f29e6da79b6a8df4123b120a4791f3ee785c2/sound.c#L108
         struct random_container {
             uint32_t self_id;
             uint32_t switch_container_id;
@@ -214,40 +233,50 @@ class RSContainer(Section):
     ]
 
     def _read(self):
+        flag = self.bnk_version == 0x58
         self._data.seek(1)
 
         unk = self._data.customize('<B')
-        # - fseek(bnk_file, 5 + (unk != 0) + (unk * 7), SEEK_CUR);
-        # + fseek(bnk_file, 5 + (unk != 0) + (unk * 7) - (bnk_version == 0x58), SEEK_CUR);
-        self._data.seek(5 + (1 if unk else 0) + (unk * 7))
+
+        # self._data.seek(5 + (1 if unk else 0) + (unk * 7))
+        self._data.seek(5 + (unk != 0) + (unk * 7) - flag)
+
         self.switch_container_id = self._data.customize('<L')
-        #     if (bnk_version == 0x58) {
-        #         while(getc(bnk_file) != '\x7a' || getc(bnk_file) != '\x44');
-        #         fseek(bnk_file, 18, SEEK_CUR);}else
 
-        self._data.seek(1)
+        if flag:
+            while self._data.customize('<B') != '\x7a' or self._data.customize('<B') != '\x44':
+                continue
+            self._data.seek(18)
+        else:
 
-        unk2 = self._data.customize('<B')
+            self._data.seek(1)
 
-        to_seek = 25
+            unk2 = self._data.customize('<B')
 
-        if unk2 != 0:
-            self._data.seek(5 * unk2)
+            if unk2 != 0:
+                self._data.seek(5 * unk2)
 
-        unk3 = self._data.customize('<B')
-        self._data.seek(9 * unk3)
-        self._data.seek(9 + (1 if self._data.customize('<B') else 0))
+            unk3 = self._data.customize('<B')
+            self._data.seek(9 * unk3)
+            self._data.seek(9 + (1 if self._data.customize('<B') else 0))
 
-        unk4 = self._data.customize('<B')
-        if unk4 > 1:
-            # https://github.com/Morilli/bnk-extract/blob/5b1fd19e41b36addba351491c477765ad8a2ae09/sound.c#L143
-            return
-        if unk4 and unk2:
-            self._data.seek(13)
-            unk5 = self._data.customize('<B')
-            to_seek += 12 * unk5
+            unk4 = self._data.customize('<B')
+            if unk4 > 1:
+                # https://github.com/Morilli/bnk-extract/blob/5b1fd19e41b36addba351491c477765ad8a2ae09/sound.c#L143
+                return
+            to_seek = 25
 
-        self._data.seek(to_seek)
+            if unk4:
+                self._data.seek(13)
+                unk5 = self._data.customize('<B')
+                to_seek += 12 * unk5
+
+            # if unk4 and unk2:
+            #     self._data.seek(13)
+            #     unk5 = self._data.customize('<B')
+            #     to_seek += 12 * unk5
+
+            self._data.seek(to_seek)
 
         # else done
 
@@ -262,11 +291,11 @@ class RSContainer(Section):
                f'Sound_Ids: {self.sound_ids}'
 
 
-class SwitchContainer(Section):
+class SwitchContainer(SectionBNK):
     pass
 
 
-class MusicSegment(Section):
+class MusicSegment(SectionBNK):
     """
     A Music Segment is similar to a Music Track, it contains exactly one song. However, unlike the Music Tracks,
     a Music Segment can contain multiple audio files, for example one file for each instrument. In this case,
@@ -304,7 +333,7 @@ class MusicSegment(Section):
                f'Music_Track_Ids: {self.music_track_ids}'
 
 
-class MusicTrack(Section):
+class MusicTrack(SectionBNK):
     """
     struct music_track {
         uint32_t self_id;
@@ -329,7 +358,7 @@ class MusicTrack(Section):
                f'Music Container Id: {self.music_container_id}'
 
 
-class MusicSwitch(Section):
+class MusicSwitch(SectionBNK):
     """
     struct music_switch {
         uint32_t self_id;
@@ -349,15 +378,15 @@ class MusicPlaylistContainer(MusicSegment):
     pass
 
 
-class ActorMixer(Section):
+class ActorMixer(SectionBNK):
     pass
 
 
-class Attenuation(Section):
+class Attenuation(SectionBNK):
     pass
 
 
-class HIRC(SectionNoId):
+class HIRC(SectionNoIdBNK):
     """
     uint32: number of objects
     FOR EACH (object) {
@@ -376,11 +405,12 @@ class HIRC(SectionNoId):
     actor_mixer: Dict[int, ActorMixer] = dict()
     music_segments: Dict[int, MusicSegment] = dict()
     music_tracks: Dict[int, MusicTrack] = dict()
-    music_switches: Dict[int, MusicSwitch] = dict()
+    # music_switches: Dict[int, MusicSwitch] = dict()
     music_playlist_containers: Dict[int, MusicPlaylistContainer] = dict()
     attenuations: Dict[int, Attenuation] = dict()
 
-    def __init__(self, data):
+    def __init__(self, data, version):
+
         self._parse = {
             2: (Sound, self._set_sounds),
             3: (EventAction, self._set_event_actions),
@@ -390,29 +420,30 @@ class HIRC(SectionNoId):
             7: (ActorMixer, self._set_actor_mixer),
             10: (MusicSegment, self._set_music_segments),
             11: (MusicTrack, self._set_music_tracks),
-            12: (MusicSwitch, self._set_music_switches),
+            # 12: (MusicSwitch, self._set_music_switches),
             13: (MusicPlaylistContainer, self._set_music_playlist_containers),
             14: (Attenuation, self._set_attenuations)
         }
-        super(HIRC, self).__init__(data)
+        super().__init__(data, version)
+        # super(HIRC, self).__init__(data)
 
     def _read(self):
         self.number_of_objects = 0
         number = self._data.customize('<L')
 
-        for i in range(number):
+        for _ in range(number):
             section_type, section_length = self._data.customize('<BL', False)
             _call, _set = self._parse.get(section_type, (None, None))
             if _call:
                 data = self._data.binary(section_length)
-                item = _call(data)
+                item = _call(data, self.bnk_version)
                 _set({
                     item.object_id: item
                 })
                 self.number_of_objects += 1
             else:
                 self._data.skip(section_length)
-            log.debug(f'Type: {section_type}, Length: {section_length}')
+            logger.trace(f'Type: {section_type}, Length: {section_length}')
 
     def _set_actor_mixer(self, data):
         self.actor_mixer.update(data)
@@ -435,8 +466,8 @@ class HIRC(SectionNoId):
     def _set_music_tracks(self, data):
         self.music_tracks.update(data)
 
-    def _set_music_switches(self, data):
-        self.music_switches.update(data)
+    # def _set_music_switches(self, data):
+    #     self.music_switches.update(data)
 
     def _set_rs_containers(self, data):
         self.rs_containers.update(data)
@@ -449,4 +480,3 @@ class HIRC(SectionNoId):
 
     def __repr__(self):
         return f'Number_Of_Objects: {self.number_of_objects}'
-
