@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2022/8/25 12:40
+# @Update  : 2022/8/25 19:21
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
@@ -34,8 +34,7 @@ def str_fnv_32(name: str):
 class StringHash:
     string: str
     hash: int
-    container_id: int = 0
-    music_segment_id: int = 0
+    switch_id: int = 0
 
     @staticmethod
     def dump_cls():
@@ -49,17 +48,17 @@ class StringHash:
         return Encoder
 
     def __eq__(self, other):
-        if self.string == other.string and self.hash == other.hash and self.music_segment_id == other.music_segment_id:
+        if self.string == other.string and self.hash == other.hash and self.switch_id == other.switch_id:
             return True
         return False
 
     def __hash__(self):
-        return hash(f'{self.string}{self.hash}{self.container_id}')
+        return hash(f'{self.string}{self.hash}{self.switch_id}')
 
     def __repr__(self):
         return f'String: {self.string}, ' \
                f'Hash: {self.hash}, ' \
-               f'Container_Id: {self.container_id}'
+               f'Switch_Id: {self.switch_id}'
 
 
 class BIN(SectionNoId):
@@ -145,8 +144,7 @@ class BIN(SectionNoId):
         """
         if isinstance(data, str):
             data = json.load(open(data, encoding='utf-8'))
-        return [StringHash(item['string'], item['hash'], item['container_id'], item['music_segment_id']) for item in
-                data]
+        return [StringHash(item['string'], item['hash'], item['switch_id']) for item in data]
 
     def _get_audio_files(self, head='ASSETS/Sounds/Wwise2016') -> List:
         """
