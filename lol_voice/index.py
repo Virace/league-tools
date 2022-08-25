@@ -4,24 +4,24 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2021/7/8 20:45
+# @Update  : 2022/8/26 0:33
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import logging
 import os
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Union
+
+from loguru import logger
 
 from lol_voice.base import WemFile
 from lol_voice.formats.BIN import BIN, StringHash
 from lol_voice.formats.BNK import BNK, HIRC
 from lol_voice.formats.WPK import WPK
 from lol_voice.tools.Binary import BinaryReader
-
-log = logging.getLogger(__name__)
 
 
 def get_audio_id_by_songs(event_str, event_id, songs):
@@ -33,11 +33,10 @@ def get_audio_id_by_songs(event_str, event_id, songs):
     :return:
     """
 
-    # return [StringHash(string=event_str, hash=sound.audio_id)
-    #         for sound in songs.values() if event_id in [sound.object_id, sound.sound_object_id]]
     res = []
     for sound in songs.values():
         if event_id in [sound.object_id, sound.sound_object_id]:
+            logger.debug(f'发现资源文件: {event_str}, {sound.audio_id}, by_songs')
             res.append(
                 StringHash(
                     string=event_str,
@@ -53,38 +52,14 @@ def get_audio_id_by_music_segments(event_str, event_id, music_segments, music_tr
         if ms.sound_object_id == event_id:
             for track in ms.music_track_ids:
                 if music_track := music_tracks.get(track, None):
+                    logger.debug(f'发现资源文件: {event_str}, {music_track.file_id}, by_music_segments')
                     res.append(
                         StringHash(
                             string=event_str,
                             hash=music_track.file_id,
-                            music_segment_id=ms.object_id
+                            switch_id=ms.object_id
                         )
                     )
-    return res
-
-
-def get_audio_id_by_music_switches(event_str, event_id, music_switches, music_playlist_containers, music_segments,
-                                   music_tracks):
-    res = []
-    if music_switch := music_switches.get(event_id, None):
-        for mp in music_playlist_containers.values():
-            if music_switch.some_id == mp.music_switch_id:
-                for mp_mt_id in mp.music_track_ids:
-                    if not (music_segment := music_segments.get(mp_mt_id, None)):
-                        continue
-                    for ms_id in music_segment.music_track_ids:
-
-                        if not (music_track := music_tracks.get(ms_id, None)):
-                            continue
-
-                        res.append(
-                            StringHash(
-                                string=event_str,
-                                hash=music_track.file_id,
-                                container_id=mp.object_id,
-                                music_segment_id=music_segment.object_id
-                            )
-                        )
     return res
 
 
@@ -103,11 +78,13 @@ def get_audio_id_by_music_playlist_containers(event_str, event_id, music_playlis
                     if not (music_track := music_tracks.get(ms_id, None)):
                         continue
 
+                    logger.debug(f'发现资源文件: {event_str}, {music_track.file_id}, by_music_playlist_containers')
+
                     res.append(
                         StringHash(
                             string=event_str,
                             hash=music_track.file_id,
-                            music_segment_id=music_segment.object_id
+                            switch_id=music_segment.object_id
                         )
                     )
     return res
@@ -118,40 +95,16 @@ def get_audio_hash_by_rs_containers(event_str, event_id, rs_containers, sounds):
     for rsc in rs_containers.values():
         if rsc.switch_container_id == event_id:
             for rsc_sid in rsc.sound_ids:
-                for sid, sound in sounds.items():
-                    if rsc_sid == sid or rsc_sid == sound.sound_object_id:
+                for sound in sounds.values():
+                    if rsc_sid in [sound.object_id, sound.sound_object_id]:
+                        logger.debug(f'发现资源文件: {event_str}, {sound.audio_id}, by_rs_containers')
                         res.append(
                             StringHash(
                                 string=event_str,
                                 hash=sound.audio_id,
-                                music_segment_id=rsc.object_id
+                                switch_id=rsc.object_id
                             )
                         )
-    return res
-
-
-def special_functions(music_playlist_containers, music_segments, music_track):
-    """
-        // separate "root" folder for music playlists that do not belong to anything else; maybe just dj sona?
-    :param music_playlist_containers:
-    :param music_segments:
-    :param music_track:
-    :return:
-    """
-    res = []
-    for mp in music_playlist_containers.values():
-        if not mp.music_switch_id:
-            for mp_mt_id in mp.music_track_ids:
-                if not (music_segment := music_segments.get(mp_mt_id, None)):
-                    continue
-                res.append(
-                    StringHash(
-                        string='Music playlists',
-                        hash=music_track.file_id,
-                        container_id=mp.object_id,
-                        music_segment_id=music_segment.object_id
-                    )
-                )
     return res
 
 
@@ -185,14 +138,10 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
             if event_action and event_action.action_type == 4:
                 reference_id = event_action.reference_id
 
+                # 根据事件ID 从songs中取出相关资源文件
                 res.extend(get_audio_id_by_songs(string.string, reference_id, hirc.sounds))
 
                 res.extend(get_audio_id_by_music_segments(string.string, reference_id, hirc.music_segments,
-                                                          hirc.music_tracks))
-                res.extend(get_audio_id_by_music_switches(string.string, reference_id,
-                                                          hirc.music_switches,
-                                                          hirc.music_playlist_containers,
-                                                          hirc.music_segments,
                                                           hirc.music_tracks))
 
                 res.extend(
@@ -205,14 +154,11 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
                 res.extend(
                     get_audio_hash_by_rs_containers(string.string, reference_id, hirc.rs_containers, hirc.sounds)
                 )
-                res.extend(special_functions(hirc.music_playlist_containers,
-                                             hirc.music_segments,
-                                             hirc.music_tracks))
 
     return res
 
 
-def get_audio_files(audio_file: Union[str, bytes], get_data=True, hash_table: Optional[List[int]] = None) \
+def get_audio_files(audio_file: Union[str, bytes, os.PathLike], get_data=True, hash_table: Optional[List[int]] = None) \
         -> List[WemFile]:
     """
     提供音频文件, 返回文件列表
@@ -222,7 +168,7 @@ def get_audio_files(audio_file: Union[str, bytes], get_data=True, hash_table: Op
     :return:
     """
 
-    if isinstance(audio_file, str):
+    if isinstance(audio_file, str) or isinstance(audio_file, os.PathLike):
         audio_ext = os.path.splitext(audio_file)[-1]
     elif isinstance(audio_file, bytes):
         br = BinaryReader(audio_file)
@@ -335,7 +281,7 @@ def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_c
             try:
                 future.result()
             except Exception as exc:
-                log.error(f'提取文件出错: {exc}, 出错文件: {path}')
+                logger.error(f'提取文件出错: {exc}, 出错文件: {path}')
 
 
 def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir, ext=None,
