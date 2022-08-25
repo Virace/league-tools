@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2022/8/16 0:49
+# @Update  : 2022/8/25 21:55
 # @Detail  : 块 基类
 
 import os
@@ -16,12 +16,7 @@ from typing import Union
 from lol_voice.tools import BinaryReader
 
 
-class Section:
-    __slots__ = [
-        'object_id',
-        '_data'
-    ]
-
+class SectionNoId:
     def __init__(self, data: Union[BinaryReader, BytesIO, bytes, str, os.PathLike]):
         self._data = data
         if not isinstance(data, BinaryReader):
@@ -30,12 +25,28 @@ class Section:
         self._read_object()
         self._read()
 
+    def _read_object(self):
+        pass
+
     def _read(self):
         """
         Rewrite
         :return:
         """
         pass
+
+    def __del__(self):
+        del self._data
+
+
+class Section(SectionNoId):
+    __slots__ = [
+        'object_id',
+        '_data'
+    ]
+
+    def __init__(self, data: Union[BinaryReader, BytesIO, bytes, str, os.PathLike]):
+        super().__init__(data)
 
     def _read_object(self):
         self.object_id = self._data.customize('<L')
@@ -47,11 +58,19 @@ class Section:
         del self._data
 
 
-class SectionNoId(Section):
-    def _read_object(self):
-        attr = 'object_id'
-        if hasattr(self, attr):
-            delattr(self, 'object_id')
+class SectionNoIdBNK(SectionNoId):
+    def __init__(self, data: Union[BinaryReader, BytesIO, bytes, str, os.PathLike], version: int = 0):
+        self.bnk_version = version
+        super().__init__(data)
+
+
+class SectionBNK(SectionNoIdBNK, Section):
+    """
+    区别就是加了一个 bnk version
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 @dataclass
@@ -59,8 +78,8 @@ class WemFile:
     id: int
     offset: int
     length: int
-    filename: str = None
-    data: bytes = None
+    filename: [str, None] = None
+    data: [bytes, None] = None
 
     def save_file(self, path, wem=True, vgmstream_cli=None):
         """
@@ -116,4 +135,3 @@ class WemFile:
         return f'File_Id: {self.id}, ' \
                f'File_Length: {self.length},' \
                f'File_Name: {self.filename}'
-
