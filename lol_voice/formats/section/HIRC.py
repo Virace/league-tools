@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2021/7/9 1:34
+# @Update  : 2022/8/16 1:06
 # @Detail  : Wwise bnk文件, HIRC块
 
 import logging
@@ -217,9 +217,13 @@ class RSContainer(Section):
         self._data.seek(1)
 
         unk = self._data.customize('<B')
-
+        # - fseek(bnk_file, 5 + (unk != 0) + (unk * 7), SEEK_CUR);
+        # + fseek(bnk_file, 5 + (unk != 0) + (unk * 7) - (bnk_version == 0x58), SEEK_CUR);
         self._data.seek(5 + (1 if unk else 0) + (unk * 7))
         self.switch_container_id = self._data.customize('<L')
+        #     if (bnk_version == 0x58) {
+        #         while(getc(bnk_file) != '\x7a' || getc(bnk_file) != '\x44');
+        #         fseek(bnk_file, 18, SEEK_CUR);}else
 
         self._data.seek(1)
 
@@ -244,6 +248,8 @@ class RSContainer(Section):
             to_seek += 12 * unk5
 
         self._data.seek(to_seek)
+
+        # else done
 
         count = self._data.customize('<L')
 

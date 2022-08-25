@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2021/7/9 1:34
+# @Update  : 2022/8/25 12:40
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
@@ -49,7 +49,7 @@ class StringHash:
         return Encoder
 
     def __eq__(self, other):
-        if self.string == other.string and self.hash == other.hash and self.container_id == other.switch_id:
+        if self.string == other.string and self.hash == other.hash and self.music_segment_id == other.music_segment_id:
             return True
         return False
 
@@ -145,7 +145,8 @@ class BIN(SectionNoId):
         """
         if isinstance(data, str):
             data = json.load(open(data, encoding='utf-8'))
-        return [StringHash(item['string'], item['hash'], item['switch_id']) for item in data]
+        return [StringHash(item['string'], item['hash'], item['container_id'], item['music_segment_id']) for item in
+                data]
 
     def _get_audio_files(self, head='ASSETS/Sounds/Wwise2016') -> List:
         """
@@ -187,5 +188,3 @@ class BIN(SectionNoId):
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
-
-
