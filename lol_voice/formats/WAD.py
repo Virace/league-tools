@@ -4,25 +4,23 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2021/3/17 0:21
+# @Update  : 2022/8/25 21:59
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
 # https://github.com/CommunityDragon/CDTB/blob/master/cdragontoolbox/wad.py
 
 import gzip
-import logging
 import os
 from dataclasses import dataclass
-from typing import List, Dict, Union, AnyStr, Callable
+from typing import AnyStr, Callable, Dict, List, Union
 
 import xxhash
 import zstd
+from loguru import logger
 
 from lol_voice.base import SectionNoId
 from lol_voice.tools import BinaryReader
-
-log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -108,7 +106,7 @@ class WAD(SectionNoId):
             n = data.customize('<L')
             data.skip(4)
             re = data.bytes(4 + n).rstrip(b'\0').decode('utf-8')
-            log.debug(f'文件重定向: {re}')
+            logger.debug(f'文件重定向: {re}')
             return
         elif file.type == 3:
             data = zstd.decompress(this)
@@ -122,7 +120,7 @@ class WAD(SectionNoId):
             if not os.path.exists(file_dir):
                 os.makedirs(file_dir)
 
-            log.debug(f'提取文件: {file_path}')
+            logger.debug(f'提取文件: {file_path}')
             with open(file_path, 'wb+') as f:
                 f.write(data)
             return file_path
@@ -170,4 +168,3 @@ class WAD(SectionNoId):
                 self._extract(file, file_path)
                 ret.append(file_path)
         return ret
-

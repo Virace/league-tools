@@ -4,18 +4,16 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2021/4/15 13:43
+# @Update  : 2022/8/25 21:59
 # @Detail  : Wwise bnk文件, Data块
 
-import logging
+
 from typing import List
 
-from lol_voice.base import SectionNoId, WemFile
-
-log = logging.getLogger(__name__)
+from lol_voice.base import SectionNoIdBNK, WemFile
 
 
-class DATA(SectionNoId):
+class DATA(SectionNoIdBNK):
     """
     The DATA section contains the .wem files, not encoded, and immediately following each other.
     It is not recommended to read this section by itself

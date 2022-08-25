@@ -4,16 +4,15 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2021/4/15 13:45
+# @Update  : 2022/8/25 23:49
 # @Detail  : 
 
 import io
-import logging
 import struct
 from io import BytesIO, IOBase
-from typing import *
+from typing import Union
 
-log = logging.getLogger(__name__)
+from loguru import logger
 
 
 class BinaryReader:
@@ -45,7 +44,7 @@ class BinaryReader:
         if length > len(d1):
             return None if one else []
         data = struct.unpack(fmt, d1)
-        log.debug(f'{fmt}: {length}, before: {before}, after: {self.buffer.tell()}')
+        logger.trace(f'{fmt}: {length}, before: {before}, after: {self.buffer.tell()}')
         return data[0] if one else data
 
     def bytes(self, length=None) -> bytes:
@@ -127,7 +126,7 @@ class BinaryReader:
 
         if point != -1:
             self.seek(point + len(sub) + current, 0)
-        log.debug(f'current point3: {self.buffer.tell()}')
+        logger.trace(f'current point3: {self.buffer.tell()}')
         return point
 
     def find_by_signature(self, sub: Union[bytearray, list, str], start=False):

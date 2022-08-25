@@ -4,18 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2021/3/9 19:35
+# @Update  : 2022/8/25 22:00
 # @Detail  : Wwise bnk文件, DIDX块
 
 
-import logging
-
-from lol_voice.base import SectionNoId, WemFile
-
-log = logging.getLogger(__name__)
+from lol_voice.base import SectionNoIdBNK, WemFile
 
 
-class DIDX(SectionNoId):
+class DIDX(SectionNoIdBNK):
     """
         The DIDX (Data Index) section contains the references to the .wem files embedded in the SoundBank.
         Each sound file is described with 12 bytes,
@@ -35,7 +31,7 @@ class DIDX(SectionNoId):
 
     def _read(self):
         self.files = []
-        for i in range(self._data.end // 12):
+        for _ in range(self._data.end // 12):
             self.files.append(
                 WemFile(*self._data.customize('<LLL', False))
             )
