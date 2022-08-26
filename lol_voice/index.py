@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2022/8/26 0:33
+# @Update  : 2022/8/27 2:10
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -208,8 +208,8 @@ def get_audio_files(audio_file: Union[str, bytes, os.PathLike], get_data=True, h
 def get_event_hashtable(bin_file: Union[str, List[StringHash]], event_file):
     """
     根据皮肤bin文件以及音频事件, 提取事件哈希表
-    :param bin_file:
-    :param event_file:
+    :param bin_file: bin文件
+    :param event_file: bnk event文件
     :return:
     """
     if isinstance(bin_file, str):
@@ -243,6 +243,15 @@ def get_audio_hashtable(event_hashtable, audio_file):
         return
 
     ret = defaultdict(list)
+
+    # 没有没有相应事件的音频文件
+    event_ids = [ht.hash for ht in event_hashtable]
+    file_ids = [file.id for file in audio_files]
+    no_event = list(set(file_ids).difference(set(event_ids)))
+    no_event_files = [file for file in audio_files if file.id in no_event]
+    for file in no_event_files:
+        ret['No_Event'].append(file.id)
+
     for ht in event_hashtable:
         for file in audio_files:
             if ht.hash == file.id:
@@ -301,27 +310,39 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     if ext and ext != 'wem' and not vgmstream_cli:
         raise TypeError('如需转码需要提供 vgmstream_cli 参数.')
 
-    audio_hashtable = get_event_hashtable(bin_file, event_file)
+    event_hashes = get_event_hashtable(bin_file, event_file)
 
     if not (audio_files := get_audio_files(audio_file)):
         return
 
+    event_ids = [eh.hash for eh in event_hashes]
+    file_ids = [file.id for file in audio_files]
+    no_event = list(set(file_ids).difference(set(event_ids)))
+    no_event_files = [file for file in audio_files if file.id in no_event]
+
+    for file in no_event_files:
+        name = file.filename or f'{file.id}.wem'
+        if ext:
+            name = f'{os.path.splitext(name)[0]}.{ext}'
+        logging.debug(f'No Event, File: {file.id}')
+        file.save_file(os.path.join(out_dir, name), wem, vgmstream_cli=vgmstream_cli)
+        
     # 去重
     temp = {}
-    for ht in audio_hashtable:
+    for eh in event_hashes:
         for file in audio_files:
-            if ht.hash == file.id:
+            if eh.hash == file.id:
                 name = file.filename or f'{file.id}.wem'
                 if ext:
                     name = f'{os.path.splitext(name)[0]}.{ext}'
 
-                _dir = os.path.join(out_dir, ht.string)
+                _dir = os.path.join(out_dir, eh.string)
                 if not os.path.exists(_dir):
                     os.makedirs(_dir)
 
                 if file.id not in temp:
                     temp.update({file.id: os.path.join(_dir, name)})
-                    logging.debug(f'Event: {ht.string}, File: {name}')
+                    logging.debug(f'Event: {eh.string}, File: {name}')
                     file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
 
                 else:
