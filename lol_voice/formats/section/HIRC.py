@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2022/8/26 0:21
+# @Update  : 2022/8/27 1:31
 # @Detail  : Wwise bnk文件, HIRC块
 
 from typing import Dict
@@ -233,6 +233,7 @@ class RSContainer(SectionBNK):
     ]
 
     def _read(self):
+        self.sound_ids = []
         flag = self.bnk_version == 0x58
         self._data.seek(1)
 
