@@ -4,10 +4,11 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2022/8/25 23:49
+# @Update  : 2022/10/10 20:47
 # @Detail  : 
 
 import io
+import os
 import struct
 from io import BytesIO, IOBase
 from typing import Union
@@ -20,8 +21,8 @@ class BinaryReader:
     以二进制操作流、文件
     """
 
-    def __init__(self, file: Union[IOBase, BytesIO, bytes, str]):
-        if isinstance(file, str):
+    def __init__(self, file: Union[IOBase, BytesIO, bytes, str, os.PathLike]):
+        if isinstance(file, str) or isinstance(file, os.PathLike):
             self.buffer = io.open(file, 'rb')
         elif isinstance(file, bytes):
             self.buffer = BytesIO(file)
