@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lol-voice"
-version = "1.0.3"
+version = "1.0.4"
 readme = "README.md"
 license = 'GPL-3.0-only'
 authors = ["Virace <Virace@aliyun.com>"]
