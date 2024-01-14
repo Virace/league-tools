@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2022/8/27 2:10
+# @Update  : 2024/1/14 15:42
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -242,7 +242,7 @@ def get_audio_hashtable(event_hashtable, audio_file):
     if not (audio_files := get_audio_files(audio_file, False)):
         return
 
-    ret = defaultdict(list)
+    ret = defaultdict(set)
 
     # 没有没有相应事件的音频文件
     event_ids = [ht.hash for ht in event_hashtable]
@@ -250,18 +250,18 @@ def get_audio_hashtable(event_hashtable, audio_file):
     no_event = list(set(file_ids).difference(set(event_ids)))
     no_event_files = [file for file in audio_files if file.id in no_event]
     for file in no_event_files:
-        ret['No_Event'].append(file.id)
+        ret['No_Event'].add(file.id)
 
     for ht in event_hashtable:
         for file in audio_files:
             if ht.hash == file.id:
-                ret[ht.string].append(file.id)
+                ret[ht.string].add(file.id)
 
     # 尝试排序
     sort_keys = sorted(ret.keys())
     order_ret = OrderedDict()
     for key in sort_keys:
-        order_ret[key] = ret[key]
+        order_ret[key] = sorted(ret[key])
     return order_ret
 
 
