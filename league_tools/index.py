@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2024/5/5 2:43
+# @Update  : 2024/5/5 5:35
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -13,7 +13,7 @@ import logging
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, get_args
 
 from loguru import logger
 
@@ -169,7 +169,7 @@ def get_audio_files(audio_file: StrPath, get_data=True, hash_table: Optional[Lis
     :return:
     """
 
-    if isinstance(audio_file, StrPath):
+    if isinstance(audio_file, str) or hasattr(audio_file, "__fspath__"):
         audio_ext = Path(audio_file).suffix
     elif isinstance(audio_file, bytes):
         br = BinaryReader(audio_file)
@@ -213,7 +213,7 @@ def get_event_hashtable(bin_file: Union[StrPath, List[StringHash]], event_file):
     :param event_file: bnk event文件
     :return:
     """
-    if isinstance(bin_file, StrPath):
+    if isinstance(bin_file, str) or hasattr(bin_file, "__fspath__"):
         b1 = BIN(bin_file)
         # 获取事件哈希表
         read_strings = b1.hash_tables.copy()
