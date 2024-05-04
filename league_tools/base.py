@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2024/5/5 2:16
+# @Update  : 2024/5/5 7:07
 # @Detail  : 块 基类
 
 import os
@@ -122,7 +122,7 @@ class WemFile:
                 stdout=subprocess.DEVNULL,
                 timeout=999999999
             )
-            if not wem:
+            if not wem and wem_path.exists():
                 wem_path.unlink()
         del data
 
