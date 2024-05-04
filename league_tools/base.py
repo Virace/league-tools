@@ -4,13 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2024/5/4 16:50
+# @Update  : 2024/5/5 2:16
 # @Detail  : 块 基类
 
 import os
 import subprocess
 from dataclasses import dataclass
 from io import BytesIO
+from pathlib import Path
 from typing import Union
 
 from league_tools.tools import BinaryReader
@@ -104,25 +105,25 @@ class WemFile:
         :return:
         """
         assert data, '不存在文件数据, 请调用DATA.get_file后, 在进行保存.'
+        path = Path(path)
 
-        file, ext = os.path.splitext(path)
-        wem_path = f'{file}.wem'
+        wem_path = path.with_suffix('.wem')
+
         with open(wem_path, 'wb+') as f:
             f.write(data)
 
-        if ext != '.wem':
-            if vgmstream_cli:
-                subprocess.run([
-                    vgmstream_cli,
-                    f'{wem_path}',
-                    '-o'
-                    f'{path}'
-                ],
-                    stdout=subprocess.DEVNULL,
-                    timeout=999999999
-                )
-                if not wem:
-                    os.remove(wem_path)
+        if (path.suffix != '.wem') and vgmstream_cli:
+            subprocess.run([
+                vgmstream_cli,
+                str(wem_path),
+                '-o',
+                str(path)
+            ],
+                stdout=subprocess.DEVNULL,
+                timeout=999999999
+            )
+            if not wem:
+                wem_path.unlink()
         del data
 
     def __iter__(self):
@@ -135,4 +136,5 @@ class WemFile:
         return f'File_Id: {self.id}, ' \
                f'File_Length: {self.length},' \
                f'File_Name: {self.filename}'
+
 

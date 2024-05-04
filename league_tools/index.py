@@ -4,15 +4,15 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2024/5/4 16:50
+# @Update  : 2024/5/5 2:43
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
 import logging
-import os
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from typing import List, Optional, Union
 
 from loguru import logger
@@ -22,6 +22,7 @@ from league_tools.formats.BIN import BIN, StringHash
 from league_tools.formats.BNK import BNK, HIRC
 from league_tools.formats.WPK import WPK
 from league_tools.tools.Binary import BinaryReader
+from league_tools.utils.type_hints import StrPath
 
 
 def get_audio_id_by_songs(event_str, event_id, songs):
@@ -158,7 +159,7 @@ def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[Stri
     return res
 
 
-def get_audio_files(audio_file: Union[str, bytes, os.PathLike], get_data=True, hash_table: Optional[List[int]] = None) \
+def get_audio_files(audio_file: StrPath, get_data=True, hash_table: Optional[List[int]] = None) \
         -> List[WemFile]:
     """
     提供音频文件, 返回文件列表
@@ -168,8 +169,8 @@ def get_audio_files(audio_file: Union[str, bytes, os.PathLike], get_data=True, h
     :return:
     """
 
-    if isinstance(audio_file, str) or isinstance(audio_file, os.PathLike):
-        audio_ext = os.path.splitext(audio_file)[-1]
+    if isinstance(audio_file, StrPath):
+        audio_ext = Path(audio_file).suffix
     elif isinstance(audio_file, bytes):
         br = BinaryReader(audio_file)
         head = br.customize('<4s')
@@ -205,14 +206,14 @@ def get_audio_files(audio_file: Union[str, bytes, os.PathLike], get_data=True, h
     return audio_files
 
 
-def get_event_hashtable(bin_file: Union[str, List[StringHash]], event_file):
+def get_event_hashtable(bin_file: Union[StrPath, List[StringHash]], event_file):
     """
     根据皮肤bin文件以及音频事件, 提取事件哈希表
     :param bin_file: bin文件
     :param event_file: bnk event文件
     :return:
     """
-    if isinstance(bin_file, str):
+    if isinstance(bin_file, StrPath):
         b1 = BIN(bin_file)
         # 获取事件哈希表
         read_strings = b1.hash_tables.copy()
@@ -265,7 +266,7 @@ def get_audio_hashtable(event_hashtable, audio_file):
     return order_ret
 
 
-def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_cli=None, worker=None):
+def extract_not_classified(audio_file: StrPath, out_dir: StrPath, ext=None, wem=False, vgmstream_cli=None, worker=None):
     """
     无需分类直接提取文件
     :param audio_file: 音频文件, 可以是bnk和wpk文件
@@ -283,7 +284,7 @@ def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_c
 
     with ThreadPoolExecutor(max_workers=worker) as executor:
         future_to_path = {
-            executor.submit(file.save_file, os.path.join(out_dir, file.filename or f'{file.id}.wem'), wem,
+            executor.submit(file.save_file, Path(out_dir).joinpath(file.filename or f'{file.id}.wem'), wem,
                             vgmstream_cli): file for file in audio_files}
         for future in as_completed(future_to_path):
             path = future_to_path[future]
@@ -293,7 +294,7 @@ def extract_not_classified(audio_file, out_dir, ext=None, wem=False, vgmstream_c
                 logger.error(f'提取文件出错: {exc}, 出错文件: {path}')
 
 
-def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file, out_dir, ext=None,
+def extract_audio(bin_file: Union[StrPath, List[StringHash]], event_file, audio_file, out_dir, ext=None,
                   vgmstream_cli=None,
                   wem=True):
     """
@@ -323,10 +324,10 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
     for file in no_event_files:
         name = file.filename or f'{file.id}.wem'
         if ext:
-            name = f'{os.path.splitext(name)[0]}.{ext}'
+            name = Path(name).stem + '.' + ext
         logging.debug(f'No Event, File: {file.id}')
-        file.save_file(os.path.join(out_dir, name), wem, vgmstream_cli=vgmstream_cli)
-        
+        file.save_file(Path(out_dir).joinpath(name), wem, vgmstream_cli=vgmstream_cli)
+
     # 去重
     temp = {}
     for eh in event_hashes:
@@ -334,21 +335,19 @@ def extract_audio(bin_file: Union[str, List[StringHash]], event_file, audio_file
             if eh.hash == file.id:
                 name = file.filename or f'{file.id}.wem'
                 if ext:
-                    name = f'{os.path.splitext(name)[0]}.{ext}'
+                    name = f'{Path(name).stem}.{ext}'
 
-                _dir = os.path.join(out_dir, eh.string)
-                if not os.path.exists(_dir):
-                    os.makedirs(_dir)
+                _dir = Path(out_dir).joinpath(eh.string)
+                _dir.mkdir(parents=True, exist_ok=True)
 
                 if file.id not in temp:
-                    temp.update({file.id: os.path.join(_dir, name)})
+                    temp.update({file.id: _dir.joinpath(name)})
                     logging.debug(f'Event: {eh.string}, File: {name}')
-                    file.save_file(os.path.join(_dir, name), wem, vgmstream_cli=vgmstream_cli)
+                    file.save_file(_dir.joinpath(name), wem, vgmstream_cli=vgmstream_cli)
 
                 else:
                     # 创建链接
                     try:
-                        os.symlink(temp[file.id], os.path.join(_dir, name))
+                        temp[file.id].symlink_to(_dir.joinpath(name))
                     except FileExistsError:
                         pass
-

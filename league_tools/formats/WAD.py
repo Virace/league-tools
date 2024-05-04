@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2024/5/4 16:50
+# @Update  : 2024/5/5 2:21
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -13,6 +13,7 @@
 import gzip
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import AnyStr, Callable, Dict, List, Union
 
 import xxhash
@@ -21,6 +22,7 @@ from loguru import logger
 
 from league_tools.base import SectionNoId
 from league_tools.tools import BinaryReader
+from league_tools.utils.type_hints import StrPath
 
 
 @dataclass
@@ -92,7 +94,8 @@ class WAD(SectionNoId):
         xx.update(path.lower().encode('utf-8'))
         return int(xx.hexdigest(), 16)
 
-    def _extract(self, file, file_path, raw=False):
+    def _extract(self, file, file_path: StrPath, raw: bool = False):
+        file_path = Path(file_path)
         self._data.seek(file.offset, 0)
         this = self._data.bytes(file.compressed_file_size)
         # https://github.com/Pupix/lol-wad-parser/blob/2de5a9dafb77b7165b568316d5c1b1f8b5e898f2/lib/extract.js#L11
@@ -116,16 +119,15 @@ class WAD(SectionNoId):
         if raw:
             return data
         else:
-            file_dir = os.path.dirname(file_path)
-            if not os.path.exists(file_dir):
-                os.makedirs(file_dir)
+            if not file_path.parent.exists():
+                file_path.parent.mkdir(parents=True, exist_ok=True)
 
             logger.debug(f'提取文件: {file_path}')
             with open(file_path, 'wb+') as f:
                 f.write(data)
             return file_path
 
-    def extract(self, paths: List[str], out_dir: Union[AnyStr, Callable] = '', raw=False) -> List:
+    def extract(self, paths: List[StrPath], out_dir: Union[AnyStr, Callable] = '', raw=False) -> List:
         """
         提供需要解包的文件路径, 解包wad文件
         :param paths: 文件路径列表, 例如['assets/characters/aatrox/skins/base/aatrox.skn']
@@ -145,7 +147,7 @@ class WAD(SectionNoId):
                     if isinstance(out_dir, Callable):
                         file_path = out_dir(path)
                     else:
-                        file_path = os.path.join(out_dir, os.path.normpath(path))
+                        file_path = Path(out_dir) / Path(path).as_posix()
                     ret.append(self._extract(file, file_path, raw))
             if raw and not t:
                 # 源数据模式保证文件顺序与paths相同
@@ -164,7 +166,7 @@ class WAD(SectionNoId):
         for file in self.files:
             if (s := str(file.path_hash)) in hashtable:
                 path = hashtable[s]
-                file_path = os.path.join(out_dir, os.path.normpath(path))
+                file_path = Path(out_dir) / Path(path).as_posix()
                 self._extract(file, file_path)
                 ret.append(file_path)
         return ret
