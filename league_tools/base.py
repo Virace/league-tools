@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2022/8/25 21:55
+# @Update  : 2024/5/4 16:50
 # @Detail  : 块 基类
 
 import os
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Union
 
-from lol_voice.tools import BinaryReader
+from league_tools.tools import BinaryReader
 
 
 class SectionNoId:
@@ -135,3 +135,4 @@ class WemFile:
         return f'File_Id: {self.id}, ' \
                f'File_Length: {self.length},' \
                f'File_Name: {self.filename}'
+

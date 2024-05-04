@@ -15,8 +15,8 @@
 ### 介绍
 可以将英雄联盟中wpk或bnk中音频文件按照皮肤的触发条件分类解包, 默认为wem音频格式, 使用 [vgmstream](https://vgmstream.org/downloads) 可转码.
 
-- [index.py](lol_voice/index.py#L250)中 _extract_audio_ 函数逻辑以及HIRC部分块结构和WPK文件结构参考[Morilli](https://github.com/Morilli)编写的解包工具[https://github.com/Morilli/bnk-extract](https://github.com/Morilli/bnk-extract)
-- [WAD.py](lol_voice/formats/WAD.py)中 文件结构以及部分逻辑来源于[https://github.com/CommunityDragon/CDTB](https://github.com/CommunityDragon/CDTB) 和 [https://github.com/Pupix/lol-file-parser](https://github.com/Pupix/lol-file-parser)
+- [index.py](league_tools/index.py#L250)中 _extract_audio_ 函数逻辑以及HIRC部分块结构和WPK文件结构参考[Morilli](https://github.com/Morilli)编写的解包工具[https://github.com/Morilli/bnk-extract](https://github.com/Morilli/bnk-extract)
+- [WAD.py](league_tools/formats/WAD.py)中 文件结构以及部分逻辑来源于[https://github.com/CommunityDragon/CDTB](https://github.com/CommunityDragon/CDTB) 和 [https://github.com/Pupix/lol-file-parser](https://github.com/Pupix/lol-file-parser)
 
 其余bnk文件结构来参考:[http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)](http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk))
 
@@ -24,15 +24,15 @@
 ### 安装
 
 
-`pip install lol-voice`
+`pip install league-tools`
 
-`pip install -e git+https://github.com/Virace/py-bnk-extract@package#egg=lol_voice`
+`pip install -e git+https://github.com/Virace/py-bnk-extract@package#egg=league_tools`
 
 ### 使用
 此包适合提取已知皮肤语音, 如需全部提取请关注 [lol_extract_voice](https://github.com/Virace/lol_extract_voice)
 ```
-from lol_voice import extract_audio
-from lol_voice.formats import WAD
+from league_tools import extract_audio
+from league_tools.formats import WAD
 
 
 def example():

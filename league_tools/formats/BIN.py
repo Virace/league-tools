@@ -4,14 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2022/8/25 19:21
+# @Update  : 2024/5/4 16:50
 # @Detail  : 英雄联盟皮肤Bin文件解析(仅提取语音触发事件名称)
 
 import json
 from dataclasses import dataclass
 from typing import List, Union
 
-from lol_voice.base import SectionNoId
+from league_tools.base import SectionNoId
 
 CHINESE_EVENTS = {
     'oncast': '释放时',
@@ -186,3 +186,4 @@ class BIN(SectionNoId):
 
     def __repr__(self):
         return f'Hash_Table_Amount: {len(self.hash_tables)}'
+

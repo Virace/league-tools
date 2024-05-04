@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2022/8/25 21:59
+# @Update  : 2024/5/4 16:50
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -19,8 +19,8 @@ import xxhash
 import zstd
 from loguru import logger
 
-from lol_voice.base import SectionNoId
-from lol_voice.tools import BinaryReader
+from league_tools.base import SectionNoId
+from league_tools.tools import BinaryReader
 
 
 @dataclass
@@ -168,3 +168,4 @@ class WAD(SectionNoId):
                 self._extract(file, file_path)
                 ret.append(file_path)
         return ret
+

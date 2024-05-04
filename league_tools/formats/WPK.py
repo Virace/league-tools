@@ -4,10 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 0:57
-# @Update  : 2021/4/15 2:28
+# @Update  : 2024/5/4 16:50
 # @Detail  : 
 
-from lol_voice.base import SectionNoId, WemFile
+from league_tools.base import SectionNoId, WemFile
 
 
 class WPK(SectionNoId):

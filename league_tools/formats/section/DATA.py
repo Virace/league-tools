@@ -4,13 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2022/8/25 21:59
+# @Update  : 2024/5/4 16:50
 # @Detail  : Wwise bnk文件, Data块
 
 
 from typing import List
 
-from lol_voice.base import SectionNoIdBNK, WemFile
+from league_tools.base import SectionNoIdBNK, WemFile
 
 
 class DATA(SectionNoIdBNK):
@@ -41,3 +41,4 @@ class DATA(SectionNoIdBNK):
 
     def __repr__(self):
         return f'Data Length: {self._data.end}'
+

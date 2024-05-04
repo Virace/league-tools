@@ -4,14 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2022/8/27 1:31
+# @Update  : 2024/5/4 16:50
 # @Detail  : Wwise bnk文件, HIRC块
 
 from typing import Dict
 
 from loguru import logger
 
-from lol_voice.base import SectionBNK, SectionNoIdBNK
+from league_tools.base import SectionBNK, SectionNoIdBNK
 
 
 # 关于bnk版本

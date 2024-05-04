@@ -4,10 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:33
-# @Update  : 2021/7/9 1:32
+# @Update  : 2024/5/4 16:50
 # @Detail  : Wwise bnk文件, BKHD块
 
-from lol_voice.base import SectionNoId
+from league_tools.base import SectionNoId
 
 
 class BKHD(SectionNoId):
