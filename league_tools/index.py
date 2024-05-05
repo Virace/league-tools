@@ -4,16 +4,15 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2024/5/5 5:35
+# @Update  : 2024/5/5 23:26
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
-import logging
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Optional, Union, get_args
+from typing import List, Optional, Union
 
 from loguru import logger
 
@@ -325,7 +324,7 @@ def extract_audio(bin_file: Union[StrPath, List[StringHash]], event_file, audio_
         name = file.filename or f'{file.id}.wem'
         if ext:
             name = Path(name).stem + '.' + ext
-        logging.debug(f'No Event, File: {file.id}')
+        logger.debug(f'No Event, File: {file.id}')
         file.save_file(Path(out_dir).joinpath(name), wem, vgmstream_cli=vgmstream_cli)
 
     # 去重
@@ -342,7 +341,7 @@ def extract_audio(bin_file: Union[StrPath, List[StringHash]], event_file, audio_
 
                 if file.id not in temp:
                     temp.update({file.id: _dir.joinpath(name)})
-                    logging.debug(f'Event: {eh.string}, File: {name}')
+                    logger.debug(f'Event: {eh.string}, File: {name}')
                     file.save_file(_dir.joinpath(name), wem, vgmstream_cli=vgmstream_cli)
 
                 else:
