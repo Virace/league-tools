@@ -1,6 +1,6 @@
 [project]
 name = "league-tools"
-version = "0.2.0dev3"
+version = "0.2.0"
 description = "WAD、BIN、BNK、WPK文件简单处理"
 authors = [{ name = "Virace", email = "Virace@aliyun.com" }]
 keywords = ["league", "wad", "bnk"]
@@ -38,6 +38,11 @@ dev-dependencies = []
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "*.json"
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["league_tools"]
