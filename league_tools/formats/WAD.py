@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2024/9/2 6:19
+# @Update  : 2024/9/2 6:43
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -158,7 +158,7 @@ class WAD(WadHeaderAnalyzer):
 
         return bytes(decompressed_data)
 
-    def _extract(self, file: WADSection, file_path: StrPath, raw: bool = False):
+    def extract_by_section(self, file: WADSection, file_path: StrPath, raw: bool = False):
         """
         提取单个文件。
 
@@ -226,7 +226,7 @@ class WAD(WadHeaderAnalyzer):
                     file_path = out_dir(path)
                 else:
                     file_path = Path(out_dir) / path
-                result = self._extract(matched_file, file_path, raw)
+                result = self.extract_by_section(matched_file, file_path, raw)
                 results.append(result)
             else:
                 logger.warning(f"未找到路径: {path}")
@@ -246,6 +246,6 @@ class WAD(WadHeaderAnalyzer):
             if (s := str(file.path_hash)) in hashtable:
                 path = hashtable[s]
                 file_path = Path(out_dir) / Path(path).as_posix()
-                self._extract(file, file_path)
+                self.extract_by_section(file, file_path)
                 ret.append(file_path)
         return ret
