@@ -1,6 +1,6 @@
 [project]
 name = "league-tools"
-version = "0.2.2"
+version = "0.2.3"
 description = "WAD、BIN、BNK、WPK文件简单处理"
 authors = [{ name = "Virace", email = "Virace@aliyun.com" }]
 keywords = ["league", "wad", "bnk"]
