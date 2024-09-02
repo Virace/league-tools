@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2024/9/2 6:43
+# @Update  : 2024/9/2 12:25
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -158,18 +158,22 @@ class WAD(WadHeaderAnalyzer):
 
         return bytes(decompressed_data)
 
-    def extract_by_section(self, file: WADSection, file_path: StrPath, raw: bool = False):
+    def extract_by_section(self, file: WADSection, file_path: StrPath, raw: bool = False, data: bytes = None):
         """
         提取单个文件。
 
         :param file: 要提取的 WADSection 对象。
         :param file_path: 提取后保存的文件路径。
         :param raw: 是否返回原始数据而不保存到文件。
+        :param data: compressed_data
         :return: 提取的数据（如果 raw 为 True），或者保存的文件路径。
         """
-        file_path = Path(file_path)
-        self._data.seek(file.offset, 0)
-        compressed_data = self._data.bytes(file.compressed_size)
+
+        if not data:
+            self._data.seek(file.offset, 0)
+            compressed_data = self._data.bytes(file.compressed_size)
+        else:
+            compressed_data = data
         # https://github.com/Pupix/lol-wad-parser/blob/2de5a9dafb77b7165b568316d5c1b1f8b5e898f2/lib/extract.js#L11
         # https://github.com/CommunityDragon/CDTB/blob/2663610ed10a2f5fdeeadc5860abca275bcd6af6/cdragontoolbox/wad.py#L82
         try:
