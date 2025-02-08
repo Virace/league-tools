@@ -4,11 +4,11 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2024/5/4 16:50
+# @Update  : 2025/2/9 4:15
 # @Detail  : Wwise bnk文件, DIDX块
 
 
-from league_tools.base import SectionNoIdBNK, WemFile
+from src.league_tools.base import SectionNoIdBNK, WemFile
 
 
 class DIDX(SectionNoIdBNK):
@@ -38,4 +38,5 @@ class DIDX(SectionNoIdBNK):
 
     def __repr__(self):
         return f'Number_Of_Wem_Files: {len(self.files)}'
+
 

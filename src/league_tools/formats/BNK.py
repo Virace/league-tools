@@ -4,13 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:36
-# @Update  : 2024/5/4 16:50
+# @Update  : 2025/2/9 4:15
 # @Detail  : Wwise bnk文件解析, 目前仅对BKHD、HIRC、DIDX、DATA四种块信息进行处理
 
 from loguru import logger
 
-from league_tools.base import SectionNoId
-from league_tools.formats.section import DATA, DIDX, HIRC
+from src.league_tools.base import SectionNoId
+from src.league_tools.formats.section import DATA, DIDX, HIRC
 
 
 class BNK(SectionNoId):
@@ -76,4 +76,5 @@ class BNK(SectionNoId):
         return f'SoundBank_Version: {self.sb_version}, ' \
                f'SoundBank_Id: {self.sb_id}, ' \
                f'{self.objects}'
+
 

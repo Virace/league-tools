@@ -4,10 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:33
-# @Update  : 2024/5/4 16:50
+# @Update  : 2025/2/9 4:15
 # @Detail  : Wwise bnk文件, BKHD块
 
-from league_tools.base import SectionNoId
+from src.league_tools.base import SectionNoId
 
 
 class BKHD(SectionNoId):
@@ -39,4 +39,5 @@ class BKHD(SectionNoId):
                f'SoundBank_Version: {self.sb_version}, ' \
                f'SoundBank_Id: {self.sb_id}, ' \
                f'Unknown: {self.unknown}'
+
 

@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2024/9/2 12:25
+# @Update  : 2025/2/9 4:15
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -19,9 +19,9 @@ import xxhash
 import zstd
 from loguru import logger
 
-from league_tools.base import SectionNoId
-from league_tools.tools import BinaryReader
-from league_tools.utils.type_hints import StrPath
+from src.league_tools.base import SectionNoId
+from src.league_tools.tools import BinaryReader
+from src.league_tools.utils.type_hints import StrPath
 
 
 @dataclass
@@ -189,6 +189,8 @@ class WAD(WadHeaderAnalyzer):
                 logger.debug(f'文件重定向: {target}')
                 return None
             elif file.type == 3:
+                with open(str(file.path_hash), 'wb+') as f:
+                    f.write(compressed_data)
                 data = zstd.decompress(compressed_data)
             elif file.type == 4:
                 data = self._decompress_subchunks(file, compressed_data)
@@ -253,3 +255,4 @@ class WAD(WadHeaderAnalyzer):
                 self.extract_by_section(file, file_path)
                 ret.append(file_path)
         return ret
+

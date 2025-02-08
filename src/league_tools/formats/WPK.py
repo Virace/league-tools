@@ -4,10 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 0:57
-# @Update  : 2024/5/4 16:50
+# @Update  : 2025/2/9 4:15
 # @Detail  : 
 
-from league_tools.base import SectionNoId, WemFile
+from src.league_tools.base import SectionNoId, WemFile
 
 
 class WPK(SectionNoId):
@@ -52,3 +52,4 @@ class WPK(SectionNoId):
     def __repr__(self):
         return f'File_Version: {self.version}, ' \
                f'Audio_Resources_Amount: {self.file_count}'
+

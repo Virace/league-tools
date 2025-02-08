@@ -4,14 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2024/5/4 16:50
+# @Update  : 2025/2/9 4:15
 # @Detail  : Wwise bnk文件, HIRC块
 
 from typing import Dict
 
 from loguru import logger
 
-from league_tools.base import SectionBNK, SectionNoIdBNK
+from src.league_tools.base import SectionBNK, SectionNoIdBNK
 
 
 # 关于bnk版本
@@ -481,3 +481,4 @@ class HIRC(SectionNoIdBNK):
 
     def __repr__(self):
         return f'Number_Of_Objects: {self.number_of_objects}'
+

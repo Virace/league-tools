@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2024/5/5 23:26
+# @Update  : 2025/2/9 4:15
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -16,12 +16,12 @@ from typing import List, Optional, Union
 
 from loguru import logger
 
-from league_tools.base import WemFile
-from league_tools.formats.BIN import BIN, StringHash
-from league_tools.formats.BNK import BNK, HIRC
-from league_tools.formats.WPK import WPK
-from league_tools.tools.Binary import BinaryReader
-from league_tools.utils.type_hints import StrPath
+from src.league_tools.base import WemFile
+from src.league_tools.formats.BIN import BIN, StringHash
+from src.league_tools.formats.BNK import BNK, HIRC
+from src.league_tools.formats.WPK import WPK
+from src.league_tools.tools.Binary import BinaryReader
+from src.league_tools.utils.type_hints import StrPath
 
 
 def get_audio_id_by_songs(event_str, event_id, songs):
@@ -350,3 +350,4 @@ def extract_audio(bin_file: Union[StrPath, List[StringHash]], event_file, audio_
                         temp[file.id].symlink_to(_dir.joinpath(name))
                     except FileExistsError:
                         pass
+

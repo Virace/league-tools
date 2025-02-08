@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2024/5/5 7:07
+# @Update  : 2025/2/9 4:15
 # @Detail  : 块 基类
 
 import os
@@ -14,7 +14,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Union
 
-from league_tools.tools import BinaryReader
+from src.league_tools.tools import BinaryReader
 
 
 class SectionNoId:
