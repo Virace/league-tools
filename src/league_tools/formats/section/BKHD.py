@@ -4,10 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:33
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:06
 # @Detail  : Wwise bnk文件, BKHD块
 
-from src.league_tools.base import SectionNoId
+from src.league_tools.core.section import SectionNoId
 
 
 class BKHD(SectionNoId):

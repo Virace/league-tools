@@ -4,156 +4,17 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2025/4/27 0:30
+# @Update  : 2025/4/26 3:16
 # @Detail  : 英雄联盟皮肤Bin文件解析(提取语音触发事件名称与音乐数据)
 
-import json
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from loguru import logger
 
-from src.league_tools.base import SectionNoId
-
-# 文件头标记
-HEADER_SIGNATURE = b'PROP'
-
-# 主要结构类型哈希
-SKIN_AUDIO_PROPERTIES = 0x8F7B194F  # 皮肤音频属性
-MUSIC = 0x9f9c4fd4  # 音乐结构标记
-MUSIC_AUDIO_DATA_PROPERTIES = 0x6630947b  # 音乐音频数据属性
-THEME_MUSIC = 0x53ad3c01  # 主题音乐标记(皮肤文件特有)
-
-# 银行单元相关标记
-BANK_UNITS_SIGNATURE = [0x92, 0x9F, 0xF2, 0xF8]  # 银行单元集合标记
-BANK_UNIT_SIGNATURE = 0xA4416515  # 银行单元标记
-
-# 字段标记
-NAME_SIGNATURE = 0x8D39BDE6  # 名称标记
-BANK_PATH_SIGNATURE = 0x2A21AD00  # 银行路径标记
-EVENTS_SIGNATURE = 0x12D8E384  # 事件标记
-VOICE_OVER_SIGNATURE = 0x3B13AA4B  # 语音覆盖标记
-ASYNCHRONE_SIGNATURE = 0xA8A558FF
-TAG_EVENT_LIST = 0xD65BAC4D  # 标签事件列表
-
-# 音乐结构字段哈希
-THEME_MUSIC_ID = 0xEDA78F54  # 主题音乐ID
-THEME_MUSIC_TRANSITION_ID = 0x8CD28ECB  # 主题音乐过渡ID
-LEGACY_THEME_MUSIC_ID = 0xECC0E697  # 传统主题音乐ID
-LEGACY_THEME_MUSIC_TRANSITION_ID = 0x4FD5971C  # 传统主题音乐过渡ID
-VICTORY_MUSIC_ID = 0xD25DA809  # 胜利音乐ID
-DEFEAT_MUSIC_ID = 0x47F3FB40  # 失败音乐ID
-VICTORY_BANNER_SOUND = 0x73F9C3E6  # 胜利横幅音效
-DEFEAT_BANNER_SOUND = 0x27F7A183  # 失败横幅音效
-AMBIENT_EVENT = 0x3FDA1A59  # 环境事件
-
-# 类型常量
-TYPE_STRING = 0x10
-TYPE_BOOL = 0x01
-TYPE_CONTAINER = 0x12
-
-
-def str_fnv_32(name: str) -> int:
-    """
-    计算字符串的FNV-1a 32位哈希值
-
-    :param name: 要计算哈希的字符串
-    :return: 32位哈希值
-    """
-    h = 0x811c9dc5
-    for c in name:
-        h = (h * 0x01000193) % 0x100000000
-        h = (h ^ ord(c.lower())) % 0x100000000
-    return h
-
-
-@dataclass
-class StringHash:
-    """字符串哈希数据类"""
-    string: str
-    hash: int
-    container_id: int = 0  # 容器ID，用于其他模块
-    switch_id: int = 0  # 切换ID，用于其他模块
-    sound_index: int = 0  # 声音索引，用于其他模块
-
-    @staticmethod
-    def dump_cls():
-        """返回用于JSON序列化的编码器类"""
-
-        class Encoder(json.JSONEncoder):
-            def default(self, obj):
-                if isinstance(obj, StringHash):
-                    return obj.__dict__
-                return json.JSONEncoder.default(self, obj)
-
-        return Encoder
-
-    def __eq__(self, other):
-        if not isinstance(other, StringHash):
-            return False
-        return (self.string == other.string and
-                self.hash == other.hash and
-                self.container_id == other.container_id)
-
-    def __hash__(self):
-        return hash(f'{self.string}{self.hash}{self.container_id}')
-
-    def __repr__(self):
-        return (f'String: {self.string}, '
-                f'Hash: {self.hash}, '
-                f'Container_Id: {self.container_id}')
-
-
-@dataclass
-class EventData:
-    """事件数据类"""
-    category: str
-    events: List[StringHash] = field(default_factory=list)
-    bank_path: List[str] = field(default_factory=list)
-
-    def __repr__(self):
-        return (f'Category: {self.category}, '
-                f'Bank_Paths: {len(self.bank_path)}, '
-                f'Events: {len(self.events)}')
-
-
-@dataclass
-class MusicData:
-    """音乐数据类"""
-    theme_music_id: str = ""
-    theme_music_transition_id: str = ""
-    legacy_theme_music_id: str = ""
-    legacy_theme_music_transition_id: str = ""
-    victory_music_id: str = ""
-    defeat_music_id: str = ""
-    victory_banner_sound: str = ""
-    defeat_banner_sound: str = ""
-    ambient_event: str = ""
-    # 存储未知字段，键为字段标记哈希，值为对应的数据
-    unknown_fields: Dict[int, str] = field(default_factory=dict)
-
-    def __repr__(self):
-        base_info = (f'Theme Music: {self.theme_music_id}, '
-                     f'Victory Music: {self.victory_music_id}, '
-                     f'Defeat Music: {self.defeat_music_id}')
-        if self.unknown_fields:
-            base_info += f', Unknown Fields: {len(self.unknown_fields)}'
-        return base_info
-
-
-@dataclass
-class AudioGroup:
-    """
-    音频组，包含一组银行单元和可选的音乐数据
-    皮肤文件和非皮肤文件通用
-    """
-    bank_units: List[EventData] = field(default_factory=list)
-    music: Optional[MusicData] = None
-
-    def __repr__(self):
-        events_count = sum(len(unit.events) for unit in self.bank_units)
-        has_music = self.music is not None
-        return f'Bank Units: {len(self.bank_units)} (Total Events: {events_count}), Has Music: {has_music}'
+from src.league_tools.core.section import SectionNoId
+from src.league_tools.utils.hash import str_fnv_32
+from .constants import *
+from .models import StringHash, EventData, MusicData, AudioGroup
 
 
 class BIN(SectionNoId):
@@ -186,7 +47,7 @@ class BIN(SectionNoId):
         if skin_audio_pos != -1:
             logger.debug("检测到皮肤文件")
             self.is_skin_file = True
-            
+
             # 如果是皮肤文件，查找并处理主题音乐
             self._data.seek(0, 0)
             theme_music_pos = self._find_structure(THEME_MUSIC)
@@ -235,26 +96,26 @@ class BIN(SectionNoId):
         try:
             # 跳过2字节未知数据
             self._data.skip(2)
-            
+
             # 读取数据长度
             section_length = self._data.customize('<I')
-            
+
             # 读取音乐数量
             music_count = self._data.customize('<I')
-            
+
             if music_count is None or music_count <= 0:
                 logger.warning("无法读取主题音乐数量或无主题音乐")
                 return
-            
+
             logger.debug(f"发现 {music_count} 个主题音乐")
-            
+
             # 读取每个主题音乐
             for i in range(music_count):
                 music_name = self._data.string()
                 if music_name:
                     logger.debug(f"读取到主题音乐: {music_name}")
                     self.theme_music.append(music_name)
-            
+
         except Exception as e:
             logger.error(f"解析主题音乐时出错: {str(e)}")
 
@@ -512,12 +373,11 @@ class BIN(SectionNoId):
         theme_music_count = len(self.theme_music)
 
         base_info = (f'Skin_File: {self.is_skin_file}, '
-                    f'Audio_Groups: {total_units}, '
-                    f'Total_Events: {total_events}, '
-                    f'Groups_With_Music: {groups_with_music}')
-                    
+                     f'Audio_Groups: {total_units}, '
+                     f'Total_Events: {total_events}, '
+                     f'Groups_With_Music: {groups_with_music}')
+
         if theme_music_count > 0:
             base_info += f', Theme_Music: {theme_music_count}'
-            
-        return base_info
 
+        return base_info

@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2025/4/24 6:00
+# @Update  : 2025/4/24 23:21
 # @Detail  : 
 
 import io
@@ -201,7 +201,7 @@ class BinaryReader:
             if point != -1:
                 # 定位到特征码之后的位置
                 self.buffer.seek(current_pos + point + len(sub), 0)
-                return point + len(sub)
+                return self.buffer.tell()
             return -1
 
         # 有通配符情况下的查找
@@ -219,7 +219,7 @@ class BinaryReader:
                 # 找到匹配，定位到特征码之后的位置
                 position = i + length
                 self.buffer.seek(current_pos + position, 0)
-                return position
+                return self.buffer.tell()
 
         return -1
 

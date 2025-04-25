@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2025/4/24 7:09
+# @Update  : 2025/4/26 3:06
 # @Detail  : 块 基类
 
 import abc
@@ -15,7 +15,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Union, Optional, TypeVar
 
-from src.league_tools.tools import BinaryReader
+from src.league_tools.core import BinaryReader
 
 # 类型定义
 DataSource = Union[BinaryReader, BytesIO, bytes, str, os.PathLike]

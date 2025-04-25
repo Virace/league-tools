@@ -4,12 +4,12 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:36
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:09
 # @Detail  : Wwise bnk文件解析, 目前仅对BKHD、HIRC、DIDX、DATA四种块信息进行处理
 
 from loguru import logger
 
-from src.league_tools.base import SectionNoId
+from src.league_tools.core.section import SectionNoId
 from src.league_tools.formats.section import DATA, DIDX, HIRC
 
 

@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 22:36
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:09
 # @Detail  : 文件结构来源于以下两个库
 
 # https://github.com/Pupix/lol-wad-parser/tree/master/lib
@@ -19,7 +19,7 @@ import xxhash
 import zstd
 from loguru import logger
 
-from src.league_tools.base import SectionNoId
+from src.league_tools.core.section import SectionNoId
 from src.league_tools.tools import BinaryReader
 from src.league_tools.utils.type_hints import StrPath
 

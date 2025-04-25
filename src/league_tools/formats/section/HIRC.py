@@ -4,14 +4,14 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:32
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:06
 # @Detail  : Wwise bnk文件, HIRC块
 
 from typing import Dict
 
 from loguru import logger
 
-from src.league_tools.base import SectionBNK, SectionNoIdBNK
+from src.league_tools.core.section import SectionBNK, SectionNoIdBNK
 
 
 # 关于bnk版本
@@ -480,5 +480,11 @@ class HIRC(SectionNoIdBNK):
         self.switch_containers.update(data)
 
     def __repr__(self):
-        return f'Number_Of_Objects: {self.number_of_objects}'
+        # 输出所有元素数量
+        return f'Number_Of_Objects: {self.number_of_objects}，Sounds: {len(self.sounds)}, ' \
+             f'Event_Actions: {len(self.event_actions)}, Events: {len(self.events)}, ' \
+          f'RS_Containers: {len(self.rs_containers)}, Switch_Containers: {len(self.switch_containers)}, ' \
+          f'Actor_Mixer: {len(self.actor_mixer)}, Music_Segments: {len(self.music_segments)}, ' \
+          f'Music_Tracks: {len(self.music_tracks)}, Music_Playlist_Containers: {len(self.music_playlist_containers)}, ' \
+          f'Attenuations: {len(self.attenuations)}'
 

@@ -4,10 +4,10 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/2 0:57
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:09
 # @Detail  : 
 
-from src.league_tools.base import SectionNoId, WemFile
+from src.league_tools.core.section import SectionNoId, WemFile
 
 
 class WPK(SectionNoId):

@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:09
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -16,10 +16,10 @@ from typing import List, Optional, Union
 
 from loguru import logger
 
-from src.league_tools.base import WemFile
-from src.league_tools.formats.BIN import BIN, StringHash
-from src.league_tools.formats.BNK import BNK, HIRC
-from src.league_tools.formats.WPK import WPK
+from src.league_tools.core.section import WemFile
+from src.league_tools.formats.bin.parser import BIN, StringHash
+from src.league_tools.formats.bnk.parser import BNK, HIRC
+from src.league_tools.formats.wpk.parser import WPK
 from src.league_tools.tools.Binary import BinaryReader
 from src.league_tools.utils.type_hints import StrPath
 
@@ -57,7 +57,7 @@ def get_audio_id_by_music_segments(event_str, event_id, music_segments, music_tr
                         StringHash(
                             string=event_str,
                             hash=music_track.file_id,
-                            switch_id=ms.object_id
+                            container_id=ms.object_id
                         )
                     )
     return res
@@ -84,7 +84,7 @@ def get_audio_id_by_music_playlist_containers(event_str, event_id, music_playlis
                         StringHash(
                             string=event_str,
                             hash=music_track.file_id,
-                            switch_id=music_segment.object_id
+                            container_id=music_segment.object_id
                         )
                     )
     return res
@@ -102,7 +102,7 @@ def get_audio_hash_by_rs_containers(event_str, event_id, rs_containers, sounds):
                             StringHash(
                                 string=event_str,
                                 hash=sound.audio_id,
-                                switch_id=rsc.object_id
+                                container_id=rsc.object_id
                             )
                         )
     return res

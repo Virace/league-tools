@@ -4,13 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/1 21:09
-# @Update  : 2025/2/9 4:15
+# @Update  : 2025/4/26 3:06
 # @Detail  : Wwise bnk文件, Data块
 
 
 from typing import List
 
-from src.league_tools.base import SectionNoIdBNK, WemFile
+from src.league_tools.core.section import SectionNoIdBNK, WemFile
 
 
 class DATA(SectionNoIdBNK):
