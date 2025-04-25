@@ -4,21 +4,18 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2025/4/24 23:21
+# @Update  : 2025/4/26 3:25
 # @Detail  : 
 
 import io
 import os
 import struct
-from io import BytesIO, IOBase
-from typing import Union, Optional, List, Any, BinaryIO, TypeVar, cast
+from io import BytesIO
+from typing import Optional, Any, BinaryIO, cast
 
 from loguru import logger
 
-# 定义类型变量简化类型标注
-T = TypeVar('T')
-FilePathOrBuffer = Union[str, os.PathLike, bytes, BytesIO, IOBase]
-BinaryData = Union[bytes, bytearray, List[int], str]
+from src.league_tools.utils.type_hints import BinaryData, DataSource
 
 
 class BinaryReader:
@@ -26,7 +23,7 @@ class BinaryReader:
     二进制数据读取器，支持对流、文件的二进制操作
     """
 
-    def __init__(self, file: FilePathOrBuffer):
+    def __init__(self, file: DataSource):
         """
         初始化二进制读取器
         
@@ -84,7 +81,7 @@ class BinaryReader:
         if data is None:
             return ""
         return data.decode(encoding)
-    
+
     def string(self, encoding: str = 'utf-8') -> str:
         """
         读取字符串
@@ -256,3 +253,4 @@ class BinaryReader:
         析构函数，确保资源被释放
         """
         self.close()
+

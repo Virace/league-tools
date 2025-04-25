@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2025/4/26 3:09
+# @Update  : 2025/4/26 3:26
 # @Detail  : 
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
@@ -20,7 +20,7 @@ from src.league_tools.core.section import WemFile
 from src.league_tools.formats.bin.parser import BIN, StringHash
 from src.league_tools.formats.bnk.parser import BNK, HIRC
 from src.league_tools.formats.wpk.parser import WPK
-from src.league_tools.tools.Binary import BinaryReader
+from src.league_tools.core import BinaryReader
 from src.league_tools.utils.type_hints import StrPath
 
 

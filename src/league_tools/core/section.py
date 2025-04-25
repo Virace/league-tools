@@ -4,22 +4,17 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 19:36
-# @Update  : 2025/4/26 3:06
+# @Update  : 2025/4/26 3:27
 # @Detail  : 块 基类
 
 import abc
-import os
 import subprocess
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
-from typing import Union, Optional, TypeVar
+from typing import Optional, Union
 
 from src.league_tools.core import BinaryReader
-
-# 类型定义
-DataSource = Union[BinaryReader, BytesIO, bytes, str, os.PathLike]
-T = TypeVar('T')
+from src.league_tools.utils.type_hints import DataSource
 
 
 class SectionBase:
@@ -27,7 +22,7 @@ class SectionBase:
     所有区段的基础类，提供公共功能
     """
 
-    def __init__(self, data: DataSource):
+    def __init__(self, data: Union[DataSource, BinaryReader]):
         """
         初始化区段对象
         
@@ -236,4 +231,3 @@ class _OldSectionNoId(SectionBase, abc.ABC):
 # 为确保向后兼容，导出原来的类名
 # 新代码应使用上面定义的非抽象基类
 SectionNoId_Abstract = _OldSectionNoId
-
