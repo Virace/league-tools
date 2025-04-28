@@ -142,7 +142,7 @@ class SectionBNK(SectionBase):
             raise ValueError("无法读取对象ID，文件可能已损坏或格式不正确")
 
     def __repr__(self):
-        return f'Object_Id: {self.object_id}, BNK_Version: {self.bnk_version}'
+        return f'BNK_Version: {self.bnk_version}，Object_Id: {self.object_id}'
 
 
 @dataclass
