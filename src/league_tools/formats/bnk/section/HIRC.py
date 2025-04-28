@@ -3,488 +3,458 @@
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
-# @Create  : 2021/2/27 19:32
-# @Update  : 2025/4/26 3:06
-# @Detail  : Wwise bnk文件, HIRC块
+# @Create  : 2023/5/15 19:21
+# @Update  : 2025/4/28 8:59
+# @Detail  : HIRC区块解析
 
-from typing import Dict
+from typing import Dict, Optional, List
+from enum import IntEnum
 
 from loguru import logger
-
-from src.league_tools.core.section import SectionBNK, SectionNoIdBNK
-
-
-# 关于bnk版本
-# https://github.com/Morilli/bnk-extract-GUI/blob/a49f29e6da79b6a8df4123b120a4791f3ee785c2/bnk-extract/sound.c#L272
-# 这个地方不懂，之前也没有遇到错误
+from src.league_tools.core.section import SectionNoId, SectionBase
 
 
-class Sound(SectionBNK):
+class HIRCBase(SectionBase):
     """
-    Sound SFX/Sound Voice
-
-    Format:
-    -- BEGINNING OF SECTION --
-        02 -- identifier for Sound SFX section
-        uint32: length of this section
-        uint32: id of this Sound SFX object
-            byte[4]: four unknown bytes
-            uint32: whether the sound is included in the SoundBank or streamed:
-                00: embedded in the SoundBank, not streamed
-                01: is streamed
-                02: is streamed, with Zero Latency (that is, the sound data is prefetched)
-            uint32: id of the audio file
-            uint32: id of the source:
-                If this file is embedded, this will contain the SoundBank id as given in the STID section.
-                If the file is being streamed, this number will be identical to the audio file id and can be used to
-                find the .wem file to stream.
-                IF (file is embedded in a SoundBank) {
-                    uint32: offset to the position where the .wem sound file can be found in the SoundBank
-                    uint32: length in bytes of the .wem sound file in the SoundBank
-                } END IF
-
-            byte: type of Sound object:
-                00: Sound SFX
-                01: Sound Voice
-            byte[]: see section Sound structure
-    -- END OF SECTION --
+    HIRC文件专用的带ID区段基类
+    
+    结合了Section和SectionNoIdBNK的功能
     """
+    __slots__ = ['object_id', '_data']
 
-    __slots__ = [
-        'is_streamed',
-        'audio_id',
-        'source_id',
-        'sound_type',
-        'sound_object_id'
-    ]
+    def _read_object(self):
+        """读取对象ID"""
+        self.object_id = self._data.customize('<L')
+        if self.object_id is None:
+            raise ValueError("无法读取对象ID，文件可能已损坏或格式不正确")
+
+
+class HIRCType(IntEnum):
+    """HIRC对象类型枚举"""
+    # STATE = 1
+    SOUND = 2
+    ACTION = 3
+    EVENT = 4
+    RANDOM_CONTAINER = 5
+    SWITCH_CONTAINER = 6
+    # ACTOR_MIXER = 7
+    # BUS = 8
+    # LAYER_CONTAINER = 9
+    MUSIC_SEGMENT_CONTAINER = 10
+    MUSIC_TRACK = 11
+    MUSIC_SWITCH_CONTAINER = 12
+    MUSIC_RANDOM_CONTAINER = 13
+
+
+class Sound(HIRCBase):
+    """
+    声音对象类
+    id: 对象ID
+    stream_type: 流类型 来自 AkBankSourceData->StreamType
+    source_id: 音频源ID 来自 AkMediaInformation->SourceID
+    """
+    __slots__ = ['stream_type', 'source_id']
 
     def _read(self):
-        flag = self.bnk_version == 0x58
+        # 跳过 ulPluginID
+        self._data.skip(4)
 
-        self._data.seek(4)
+        # 读取AkBankSourceData->StreamType
+        self.stream_type = self._data.customize('<B')
 
-        self.is_streamed = self._data.customize('<B')
+        # 读取AkMediaInformation->SourceID
+        self.source_id = self._data.customize('<L')
 
-        if flag:
-            self._data.seek(3)
-
-        self.audio_id, self.source_id, self.sound_type = self._data.customize('<LLL', False)
-        # self.is_streamed, self.audio_id, self.source_id, self.sound_type = self._data.customize('<4xBLLL', False)
-
-        self._data.seek(4 - flag)
-
-        # self._data.seek(4)
-        self.sound_object_id = self._data.customize('<L')
-
-        # assert self.is_streamed in [0, 1, 2], 'is_streamed(资源类型)范围错误'
-        # assert self.source_id, 'source_id(资源ID)不能为空'
-        # 安妮10号皮肤效果音, 有source_id为0的, 废弃语音？？
-
-        # assert self.sound_type in [0, 1], 'sound_type(声音类型)范围错误'
-        # 阿卡丽有个皮肤sound_type为65792  而且sound_object_id为65536
-
-        # 其余信息为Sound_structure, http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#Sound_structure
-        # 因为用不到, 这部分不进行解析
+        # 跳过剩余部分
+        self._data.skip(55 - 4 - 4 - 1 - 4)
 
     def __repr__(self):
-        return f'{super().__repr__()}, ' \
-               f'Location: {self.is_streamed}, ' \
-               f'Audio_Id: {self.audio_id}, ' \
-               f'Source_Id: {self.source_id}, ' \
-               f'Sound_Type: {self.sound_type}'
+        return f"Sound对象: ID {self.object_id}, StreamType {self.stream_type}, SourceID {self.source_id}"
 
 
-class EventAction(SectionBNK):
+class Action(HIRCBase):
     """
-    Event Action
-    Format:
+    动作对象类 (ACTION)
 
-    03 -- identifier for Event Action section
-    uint32: length of this section
-    uint32: id of this Event Action object
-        byte: The Scope of this Event Action:
-            01: Game object: Switch or Trigger
-            02: Global
-            03: Game object: see referenced object id
-            04: Game object: State
-            05: All
-            09: All Except see referenced object id
-        byte: Action Type:
-            01: Stop
-            02: Pause
-            03: Resume
-            04: Play
-            05: Trigger
-            06: Mute
-            07: UnMute
-            08: Set Voice Pitch
-            09: Reset Voice Pitch
-            0A: Set Voice Volume
-            0B: Reset Voice Volume
-            0C: Set Bus Volume
-            0D: Reset Bus Volume
-            0E: Set Voice Low-pass Filter
-            0F: Reset Voice Low-pass Filter
-            10: Enable State
-            11: Disable State
-            12: Set State
-            13: Set Game Parameter
-            14: Reset Game Parameter
-            19: Set Switch
-            1A: Enable Bypass or Disable Bypass
-            1B: Reset Bypass Effect
-            1C: Break
-            1E: Seek
-        uint32: id of the game object that is referenced by this Event Action, or zero if there is no game object
-        byte: always 00
-        byte: number of additional parameters
-        FOR EACH (parameter) {
-            byte: parameter type:
-            0E: Delay, given as uint32 in milliseconds
-            0F: Play: Fade in time, given as uint32 in milliseconds
-            10: Probability, given as float
-        } END FOR
-        FOR EACH (parameter) {
-            byte[]: parameter value, format depending on parameter type (see above)
-        } END FOR
-        byte: always 00
-        IF (Action Type == "Set State", 0x12) {
-            uint32: State Group id
-            uint32: State id
-        ELSE IF (Action Type == "Set Switch", 0x19) {
-            uint32: Switch Group id
-            uint32: Switch id
-        } END IF
-    -- END OF SECTION --
+            <object name="CAkActionSetSwitch" index="292">
+				<field offset="00004433" type="u8" name="eHircType" value="3" valuefmt="0x03 [Action]"/>
+				<field offset="00004434" type="u32" name="dwSectionSize" value="21" valuefmt="0x15"/>
+				<field offset="00004438" type="sid" name="ulID" value="461635413"/>
+				<field offset="0000443c" type="u16" name="ulActionType" value="6401" valuefmt="0x1901 [SetSwitch]"/>
+				<object name="ActionInitialValues">
+					<field offset="0000443e" type="tid" name="idExt" value="671930799"/>
+					<field offset="00004442" type="u8" name="idExt_4" value="0" valuefmt="0x00">
+						<field type="bit0" name="bIsBus" value="0"/>
+					</field>
+					<object name="AkPropBundle&lt;AkPropValue,unsigned char&gt;">
+						<field offset="00004443" type="u8" name="cProps" value="0"/>
+						<list name="pProps" count="0"/>
+					</object>
+					<object name="AkPropBundle&lt;RANGED_MODIFIERS&lt;AkPropValue&gt;&gt;">
+						<field offset="00004444" type="u8" name="cProps" value="0"/>
+						<list name="pProps" count="0"/>
+					</object>
+					<object name="SwitchActionParams">
+						<field offset="00004445" type="tid" name="ulSwitchGroupID" value="3147968973"/>
+						<field offset="00004449" type="tid" name="ulSwitchStateID" value="671930799"/>
+					</object>
+				</object>
+			</object>
 
-    More information will follow.
+
+			<object name="CAkActionSetState" index="279">
+				<field offset="00004465" type="u8" name="eHircType" value="3" valuefmt="0x03 [Action]"/>
+				<field offset="00004466" type="u32" name="dwSectionSize" value="21" valuefmt="0x15"/>
+				<field offset="0000446a" type="sid" name="ulID" value="229034033"/>
+				<field offset="0000446e" type="u16" name="ulActionType" value="4612" valuefmt="0x1204 [SetState]"/>
+				<object name="ActionInitialValues">
+					<field offset="00004470" type="tid" name="idExt" value="476419625"/>
+					<field offset="00004474" type="u8" name="idExt_4" value="0" valuefmt="0x00">
+						<field type="bit0" name="bIsBus" value="0"/>
+					</field>
+					<object name="AkPropBundle&lt;AkPropValue,unsigned char&gt;">
+						<field offset="00004475" type="u8" name="cProps" value="0"/>
+						<list name="pProps" count="0"/>
+					</object>
+					<object name="AkPropBundle&lt;RANGED_MODIFIERS&lt;AkPropValue&gt;&gt;">
+						<field offset="00004476" type="u8" name="cProps" value="0"/>
+						<list name="pProps" count="0"/>
+					</object>
+					<object name="StateActionParams">
+						<field offset="00004477" type="tid" name="ulStateGroupID" value="1016604436"/>
+						<field offset="0000447b" type="tid" name="ulTargetStateID" value="476419625"/>
+					</object>
+				</object>
+			</object>
+
+            
     """
-
-    __slots__ = [
-        # 该事件动作的范围
-        'action_scope',
-        # 事件类型
-        'action_type',
-        # 该事件引用的游戏资源ID
-        'reference_id',
-    ]
+    __slots__ = ['object_id', '_data', 'action_type', 'id_ext', 'switch_group_id', 'switch_state_id', 'state_group_id', 'target_state_id']
 
     def _read(self):
-        self.action_scope, self.action_type = \
-            self._data.customize('<BB', False)
+        # logger.debug(f"Action对象: ID {self.object_id}")
+        # 读取 ulActionType
+        self.action_type = self._data.customize('<H')
 
-        if self.action_type == 25:
-            self._data.seek(7)
-        self.reference_id = self._data.customize('<L')
-        # self.reference_id = self._data.bytes()
+        if self.action_type == 0x1901:
+            # 0x1901 [SetSwitch]
+            # 跳过数据 tid  + u8 + u8 + u8
 
-    def __repr__(self):
-        return f'{super().__repr__()}, ' \
-               f'Action_Scope: {self.action_scope}, Action_Type:{self.action_type}, ' \
-               f'Reference_Id: {self.reference_id}'
+            self._data.skip(4 + 1 + 1 + 1)
 
+            # SwitchActionParams -> ulSwitchGroupID 和 ulSwitchStateID
+            self.switch_group_id = self._data.customize('<L')
+            self.switch_state_id = self._data.customize('<L')
+        elif self.action_type == 0x1204:
+            # 0x1204 [SetState]
+            # 跳过数据 tid  + u8 + u8 + u8
 
-class Event(SectionBNK):
-    """
-    Event
-    Format:
+            self._data.skip(4 + 1 + 1 + 1)
+            # StateActionParams -> ulStateGroupID 和 ulTargetStateID
+            self.state_group_id = self._data.customize('<L')
+            self.target_state_id = self._data.customize('<L')
 
-    -- BEGINNING OF SECTION --
-
-    04 -- identifier for Event section
-    uint32: length of this section
-        uint32: id of this Event object
-        uint32: the number of Event Actions this Event has
-            FOR EACH (event action) {
-                uint32: id of the Event Action
-            } END FOR
-    -- END OF SECTION --
-    """
-    __slots__ = [
-        'event_actions'
-    ]
-
-    def _read(self):
-        self.event_actions = []
-        count = self._data.customize('<B')
-        if self.bnk_version == 0x58:
-            self._data.seek(3)
-        if count:
-            self.event_actions = list(self._data.customize(f'<{count}L', False))
-
-    def __repr__(self):
-        return f'{super().__repr__()}, ' \
-               f'Event_Acionts: {self.event_actions}'
-
-
-class RSContainer(SectionBNK):
-    """
-    https://github.com/Morilli/bnk-extract-GUI/blob/a49f29e6da79b6a8df4123b120a4791f3ee785c2/sound.c#L108
-        struct random_container {
-            uint32_t self_id;
-            uint32_t switch_container_id;
-            uint32_t sound_id_amount;
-            uint32_t* sound_ids;
-        };
-    """
-    __slots__ = [
-        'switch_container_id',
-        'sound_ids',
-    ]
-
-    def _read(self):
-        self.sound_ids = []
-        flag = self.bnk_version == 0x58
-        self._data.seek(1)
-
-        unk = self._data.customize('<B')
-
-        # self._data.seek(5 + (1 if unk else 0) + (unk * 7))
-        self._data.seek(5 + (unk != 0) + (unk * 7) - flag)
-
-        self.switch_container_id = self._data.customize('<L')
-
-        if flag:
-            while self._data.customize('<B') != '\x7a' or self._data.customize('<B') != '\x44':
-                continue
-            self._data.seek(18)
         else:
+            # 读取 ActionInitialValues->idExt
+            self.id_ext = self._data.customize('<L')
 
+
+
+class Event(HIRCBase):
+    """
+    事件对象类 (EVENT)
+
+    <object name="CAkEvent" index="297">
+        <field offset="0000449f" type="u8" name="eHircType" value="4" valuefmt="0x04 [Event]"/>
+        <field offset="000044a0" type="u32" name="dwSectionSize" value="9" valuefmt="0x09"/>
+        <field offset="000044a4" type="sid" name="ulID" value="4212272965"/>
+        <object name="EventInitialValues">
+            <field offset="000044a8" type="var" name="ulActionListSize" value="1"/>
+            <list name="actions" count="1">
+                <object name="Action" index="0">
+                    <field offset="000044a9" type="tid" name="ulActionID" value="440726586"/>
+                </object>
+            </list>
+        </object>
+    </object>
+    """
+    __slots__ = ['object_id', '_data', 'event_ids']
+
+    def _read(self):
+        # logger.debug(f"Event对象: ID {self.object_id}")
+
+        self.event_ids = []
+        # 读取ulActionListSize, 事件数组大小
+        _size = self._data.customize('<B')
+
+        # 读取ulActionListSize个Action对象
+        for _ in range(_size):
+            action_id = self._data.customize('<L')
+            self.event_ids.append(action_id)
+
+
+class RanSeqCntr(HIRCBase):
+    """
+    随机序列容器类 (RANDOM_CONTAINER)
+    """
+    __slots__ = ['object_id', '_data', 'direct_parent_id', 'child_ids']
+
+
+    def _read(self):
+
+        self.child_ids = []
+
+        # NodeBaseParams
+        
+        #    跳过 NodeInitialFxParams
+        self._data.skip(2)
+        # bIsOverrideParentMetadata 、 uNumFx、 bOverrideAttachmentParams、 OverrideBusId
+        self._data.skip(7)
+        # 读取DirectParentID
+        self.direct_parent_id = self._data.customize('<L')
+        logger.debug(f"随机序列容器对象: ID {self.object_id}, DirectParentID {self.direct_parent_id}")
+
+        # 跳过 byBitVector
+        self._data.skip(1)
+        
+        #         				<object name="NodeInitialParams">
+        # 							<object name="AkPropBundle&lt;AkPropValue,unsigned char&gt;">
+        # 								<field offset="00000e53" type="u8" name="cProps" value="1"/>
+        # 								<list name="pProps" count="1">
+        # 									<object name="AkPropBundle" index="0">
+        # 										<field offset="00000e54" type="u8" name="pID" value="6" valuefmt="0x06 [MakeUpGain]"/>
+        # 										<field offset="00000e55" type="uni" name="pValue" value="-5.0"/>
+        # 									</object>
+        # 								</list>
+        # 							</object>
+        # 							<object name="AkPropBundle&lt;RANGED_MODIFIERS&lt;AkPropValue&gt;&gt;">
+        # 								<field offset="00000e59" type="u8" name="cProps" value="0"/>
+        # 								<list name="pProps" count="0"/>
+        # 							</object>
+        # 						</object>
+
+        # 跳过 NodeInitialParams
+        cProps = self._data.customize('<B')
+        self._data.skip((1 + 4) * cProps)
+        cProps = self._data.customize('<B')
+        self._data.skip(9 * cProps)
+
+        # 跳过 PositioningParams
+        uBitsPositioning = self._data.customize('<B')
+        has_positioning = bool(uBitsPositioning & 1)
+        has_3d = False
+        has_automation = False
+
+        # 临时
+        bnk_version = 130
+
+        if has_positioning:
+            if bnk_version <= 0x59:
+                has_2d = bool(self._data.customize('<B'))  # 读取uint8作为布尔值
+                has_3d = bool(self._data.customize('<B'))  # 读取uint8作为布尔值
+                if has_2d:
+                    self._data.customize('<B')  # 读取并丢弃一个字节
+            else:
+                has_3d = bool(uBitsPositioning & 0x2)
+
+        if has_positioning and has_3d:
+            if bnk_version <= 0x59:
+                has_automation = (self._data.customize('<B') & 3) != 1  # 读取uint8
+                self._data.seek(8, 1)  # 相对当前位置向前跳过8字节
+            else:
+                has_automation = bool((uBitsPositioning >> 5) & 3)
+                self._data.customize('<B')  # 读取并丢弃一个字节
+
+        if has_automation:
+            self._data.seek((9 if bnk_version <= 0x59 else 5), 1)  # 相对当前位置向前跳过字节
+            num_vertices = self._data.customize('<I')  # 读取uint32
+            self._data.seek(16 * num_vertices, 1)  # 跳过顶点数据
+
+            num_playlist_items = self._data.customize('<I')  # 读取uint32
+            print(f"num vertices: {num_vertices}, num_playlist items: {num_playlist_items}, "
+                  f"position: {self._data.buffer.tell()}")
+
+            self._data.seek((16 if bnk_version <= 0x59 else 20) * num_playlist_items, 1)  # 跳过播放列表项
+        elif bnk_version <= 0x59:
             self._data.seek(1)
 
-            unk2 = self._data.customize('<B')
 
-            if unk2 != 0:
-                self._data.seek(5 * unk2)
+        # AuxParams
+        byBitVector = self._data.customize('<B')
+        has_aux = (byBitVector >> 3) & 1
 
-            unk3 = self._data.customize('<B')
-            self._data.seek(9 * unk3)
-            self._data.seek(9 + (1 if self._data.customize('<B') else 0))
+        # 如果has_aux为真，跳过4个uint32（16字节）
+        if has_aux:
+            self._data.seek(4 * 4, 1)  # 相对当前位置向前跳过16个字节
 
-            unk4 = self._data.customize('<B')
-            if unk4 > 1:
-                # https://github.com/Morilli/bnk-extract/blob/5b1fd19e41b36addba351491c477765ad8a2ae09/sound.c#L143
-                return
-            to_seek = 25
+        # 如果BNK版本大于0x87，额外跳过4字节
+        if bnk_version > 0x87:
+            self._data.seek(4, 1)  # 相对当前位置向前跳过4个字节
 
-            if unk4:
-                self._data.seek(13)
-                unk5 = self._data.customize('<B')
-                to_seek += 12 * unk5
-
-            # if unk4 and unk2:
-            #     self._data.seek(13)
-            #     unk5 = self._data.customize('<B')
-            #     to_seek += 12 * unk5
-
-            self._data.seek(to_seek)
-
-        # else done
-
-        count = self._data.customize('<L')
-
-        self.sound_ids = self._data.customize(f'<{count}L', False)
-
-    def __repr__(self):
-        return f'{super().__repr__()}, ' \
-               f'Switch_Container_Id: {self.switch_container_id}, ' \
-               f'Sound_Id_Amount: {len(self.sound_ids)}' \
-               f'Sound_Ids: {self.sound_ids}'
+        # AdvSettingsParams
+        self._data.seek(6)
 
 
-class SwitchContainer(SectionBNK):
-    pass
+        # StateChunk
+        # 读取状态属性数量
+        state_props = self._data.customize('<B')  # 读取uint8
+        # 跳过状态属性数据（每个属性3字节）
+        self._data.seek(3 * state_props, 1)  # 相对当前位置向前跳过字节
+
+        # 读取状态组数量
+        state_groups = self._data.customize('<B')  # 读取uint8
+        # 遍历每个状态组
+        for _ in range(state_groups):
+            # 跳过状态组头部数据（5字节）
+            self._data.seek(5, 1)  # 相对当前位置向前跳过字节
+            # 读取该组中的状态数量
+            states = self._data.customize('<B')  # 读取uint8
+            # 跳过所有状态数据（每个状态8字节）
+            self._data.seek(8 * states, 1)  # 相对当前位置向前跳过字节
 
 
-class MusicSegment(SectionBNK):
+        # InitialRTPC
+        # 读取RTPC数量（2字节无符号整数）
+        num_rtpc = self._data.customize('<H')  # 读取uint16
+
+        # 遍历每个RTPC
+        for _ in range(num_rtpc):
+            # 根据BNK版本跳过不同长度的数据
+            self._data.seek(13 if bnk_version <= 0x59 else 12, 1)  # 相对当前位置向前跳过字节
+
+            # 读取点数量（2字节无符号整数）
+            point_count = self._data.customize('<H')  # 读取uint16
+
+            # 跳过所有点数据（每个点12字节）
+            self._data.seek(12 * point_count, 1)  # 相对当前位置向前跳过字节
+
+        self._data.seek(24 + 4)
+
+        size = self._data.customize('<I')
+        self.child_ids = self._data.customize(f'<{size if size > 0 else ""}I')
+
+class SwitchCntr(HIRCBase):
     """
-    A Music Segment is similar to a Music Track, it contains exactly one song. However, unlike the Music Tracks,
-    a Music Segment can contain multiple audio files, for example one file for each instrument. In this case,
-    all files are played simultaneously, but it is possible to for example mute a certain instrument in the middle of
-    the song, or to otherwise control the volume of individual files. 0A -- identifier for Music Segment section
-    uint32: length of this section uint32: id of this Music Segment object byte[]: see section Sound structure
-    uint32: number of child objects
-        FOR EACH (child object) {
-            uint32: id of child object
-        } END FOR
-    byte[]: unknown
-    bytes More information will follow.
+    切换容器类 (SWITCH_CONTAINER)
     """
-    __slots__ = [
-        'music_switch_id',
-        'sound_object_id',
-        'music_track_ids',
-    ]
+    __slots__ = ['object_id', '_data']
 
     def _read(self):
-        self._data.seek(4)
-        self.music_switch_id, self.sound_object_id = self._data.customize('<LL', False)
-        self._data.seek(3)
-        self._data.seek(11 + (1 if self._data.customize('<B') != 0 else 0))
-
-        count = self._data.customize('<L')
-
-        self.music_track_ids = self._data.customize(f'<{count}L', False)
-
-    def __repr__(self):
-        return f'{super().__repr__()}, ' \
-               f'Music_Switch_Id: {self.music_switch_id}, ' \
-               f'Sound_Object_Id: {self.sound_object_id}, ' \
-               f'Music_Track_Id_Amount: {len(self.music_track_ids)}, ' \
-               f'Music_Track_Ids: {self.music_track_ids}'
+        # logger.debug(f"切换容器对象: ID {self.object_id}")
+        pass
 
 
-class MusicTrack(SectionBNK):
+class MusicSegmentCntr(HIRCBase):
     """
-    struct music_track {
-        uint32_t self_id;
-        uint32_t file_id;
-        uint32_t music_container_id;
-    };
+    音乐段容器类 (MUSIC_SEGMENT_CONTAINER)
     """
-    __slots__ = [
-        'file_id',
-        'music_container_id',
-    ]
+    __slots__ = ['object_id', '_data']
 
     def _read(self):
-        self._data.seek(10)
-        self.file_id = self._data.customize('<L')
-        self._data.seek(64)
-        self.music_container_id = self._data.customize('<L')
-
-    def __repr__(self):
-        return f'{super().__repr__()}, ' \
-               f'File Id: {self.file_id}, ' \
-               f'Music Container Id: {self.music_container_id}'
+        # logger.debug(f"音乐段容器对象: ID {self.object_id}")
+        pass
 
 
-class MusicSwitch(SectionBNK):
+class MusicTrack(HIRCBase):
     """
-    struct music_switch {
-        uint32_t self_id;
-        uint32_t some_id;
-    };
+    音乐轨道类 (MUSIC_TRACK)
     """
-    __slots__ = [
-        'some_id',
-    ]
+    __slots__ = ['object_id', '_data']
 
     def _read(self):
-        self._data.seek(4)
-        self.some_id = self._data.customize('<L')
+        # logger.debug(f"音乐轨道对象: ID {self.object_id}")
+        pass
 
 
-class MusicPlaylistContainer(MusicSegment):
-    pass
-
-
-class ActorMixer(SectionBNK):
-    pass
-
-
-class Attenuation(SectionBNK):
-    pass
-
-
-class HIRC(SectionNoIdBNK):
+class MusicSwitchCntr(HIRCBase):
     """
-    uint32: number of objects
-    FOR EACH (object) {
-        byte: single byte identifying type of object
-        uint32: length of object section (= 4-byte id field and additional bytes)
-        uint32: id of this object
-        byte[]: additional bytes, depending on type of object and section length
-    } END FOR
+    音乐切换容器类 (MUSIC_SWITCH_CONTAINER)
     """
+    __slots__ = ['object_id', '_data']
 
-    sounds: Dict[int, Sound] = dict()
-    event_actions: Dict[int, EventAction] = dict()
-    events: Dict[int, Event] = dict()
-    rs_containers: Dict[int, RSContainer] = dict()
-    switch_containers: Dict[int, SwitchContainer] = dict()
-    actor_mixer: Dict[int, ActorMixer] = dict()
-    music_segments: Dict[int, MusicSegment] = dict()
-    music_tracks: Dict[int, MusicTrack] = dict()
-    # music_switches: Dict[int, MusicSwitch] = dict()
-    music_playlist_containers: Dict[int, MusicPlaylistContainer] = dict()
-    attenuations: Dict[int, Attenuation] = dict()
+    def _read(self):
+        # logger.debug(f"音乐切换容器对象: ID {self.object_id}")
+        pass
 
-    def __init__(self, data, version):
 
-        self._parse = {
-            2: (Sound, self._set_sounds),
-            3: (EventAction, self._set_event_actions),
-            4: (Event, self._set_events),
-            5: (RSContainer, self._set_rs_containers),
-            6: (SwitchContainer, self._set_switch_containers),
-            7: (ActorMixer, self._set_actor_mixer),
-            10: (MusicSegment, self._set_music_segments),
-            11: (MusicTrack, self._set_music_tracks),
-            # 12: (MusicSwitch, self._set_music_switches),
-            13: (MusicPlaylistContainer, self._set_music_playlist_containers),
-            14: (Attenuation, self._set_attenuations)
+class MusicRandomCntr(HIRCBase):
+    """
+    音乐随机容器类 (MUSIC_RANDOM_CONTAINER)
+    """
+    __slots__ = ['object_id', '_data']
+
+    def _read(self):
+        # logger.debug(f"音乐随机容器对象: ID {self.object_id}")
+        pass
+
+
+class HIRC(SectionNoId):
+    """
+    HIRC区块解析类
+    
+    该类负责解析BNK文件中的HIRC区块，目前仅处理Sound对象，其余类型全部跳过
+    """
+    __slots__ = ['objects']
+    
+    def _create_object(self, object_type: int, section_data) -> Optional[HIRCBase]:
+        """
+        根据对象类型创建相应的HIRC对象
+        
+        :param object_type: 对象类型ID
+        :param section_data: 对象数据
+        :return: 创建的HIRC对象，如果类型不支持则返回None
+        """
+        type_class_map = {
+            HIRCType.SOUND: Sound,
+            HIRCType.ACTION: Action,
+            HIRCType.EVENT: Event,
+            HIRCType.RANDOM_CONTAINER: RanSeqCntr,
+            HIRCType.SWITCH_CONTAINER: SwitchCntr,
+            HIRCType.MUSIC_SEGMENT_CONTAINER: MusicSegmentCntr,
+            HIRCType.MUSIC_TRACK: MusicTrack,
+            HIRCType.MUSIC_SWITCH_CONTAINER: MusicSwitchCntr,
+            HIRCType.MUSIC_RANDOM_CONTAINER: MusicRandomCntr
         }
-        super().__init__(data, version)
-        # super(HIRC, self).__init__(data)
+        
+        if object_type in type_class_map:
+            return type_class_map[object_type](section_data)
+        return None
 
     def _read(self):
-        self.number_of_objects = 0
-        number = self._data.customize('<L')
+        """解析HIRC区块"""
+        # 读取对象数量
+        self.objects = []
+        self.num_objects = self._data.customize('<L')
+        # logger.debug(f"HIRC区块: 对象数量 {self.num_objects}")
 
-        for _ in range(number):
-            section_type, section_length = self._data.customize('<BL', False)
-            _call, _set = self._parse.get(section_type, (None, None))
-            if _call:
-                data = self._data.binary(section_length)
-                item = _call(data, self.bnk_version)
-                _set({
-                    item.object_id: item
-                })
-                self.number_of_objects += 1
-            else:
-                self._data.skip(section_length)
-            logger.trace(f'Type: {section_type}, Length: {section_length}')
+        for _ in range(self.num_objects):
+            # 读取对象类型
+            object_type = self._data.customize('<B')
+            section_size = self._data.customize('<L')
 
-    def _set_actor_mixer(self, data):
-        self.actor_mixer.update(data)
+            # 计算下一个对象的偏移量
+            next_offset = self._data.buffer.tell() + section_size
 
-    def _set_attenuations(self, data):
-        self.attenuations.update(data)
+            # 如果HIRCType里面没有则直接跳过
+            try:
+                HIRCType(object_type)
+            except ValueError:
+                self._data.skip(section_size)
+                continue
 
-    def _set_event_actions(self, data):
-        self.event_actions.update(data)
+            # 读取对象数据
+            section_data = self._data.binary(section_size)
+            
+            # 创建对象
+            obj = self._create_object(object_type, section_data)
+            if obj:
+                self.objects.append(obj)
 
-    def _set_events(self, data):
-        self.events.update(data)
+            # 如果当前指针偏移量不等于正确偏移量则跳转到正确位置
+            if self._data.buffer.tell() != next_offset:
+                self._data.seek(next_offset)
 
-    def _set_music_playlist_containers(self, data):
-        self.music_playlist_containers.update(data)
-
-    def _set_music_segments(self, data):
-        self.music_segments.update(data)
-
-    def _set_music_tracks(self, data):
-        self.music_tracks.update(data)
-
-    # def _set_music_switches(self, data):
-    #     self.music_switches.update(data)
-
-    def _set_rs_containers(self, data):
-        self.rs_containers.update(data)
-
-    def _set_sounds(self, data):
-        self.sounds.update(data)
-
-    def _set_switch_containers(self, data):
-        self.switch_containers.update(data)
+    
 
     def __repr__(self):
-        # 输出所有元素数量
-        return f'Number_Of_Objects: {self.number_of_objects}，Sounds: {len(self.sounds)}, ' \
-             f'Event_Actions: {len(self.event_actions)}, Events: {len(self.events)}, ' \
-          f'RS_Containers: {len(self.rs_containers)}, Switch_Containers: {len(self.switch_containers)}, ' \
-          f'Actor_Mixer: {len(self.actor_mixer)}, Music_Segments: {len(self.music_segments)}, ' \
-          f'Music_Tracks: {len(self.music_tracks)}, Music_Playlist_Containers: {len(self.music_playlist_containers)}, ' \
-          f'Attenuations: {len(self.attenuations)}'
-
+        return f"HIRC区块: 对象数量 {self.num_objects}, 已解析对象数量 {len(self.objects)}"
