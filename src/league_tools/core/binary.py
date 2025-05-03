@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2021/3/4 20:43
-# @Update  : 2025/4/26 3:25
+# @Update  : 2025/5/4 6:42
 # @Detail  : 
 
 import io
@@ -29,17 +29,28 @@ class BinaryReader:
         
         :param file: 文件路径、字节数据或文件对象
         """
-        if isinstance(file, (str, os.PathLike)):
-            self.buffer = io.open(file, 'rb')
-        elif isinstance(file, bytes):
-            self.buffer = BytesIO(file)
-        else:
-            self.buffer = cast(BinaryIO, file)
-
-        # 获取文件大小并重置指针
-        self.end = self.buffer.seek(0, 2)
-        self.buffer.seek(0)
+        # 先初始化_closed属性，确保在任何异常情况下都能安全地调用close方法
         self._closed = False
+        self.buffer = None
+        self.end = 0
+
+        try:
+            if isinstance(file, (str, os.PathLike)):
+                self.buffer = io.open(file, 'rb')
+            elif isinstance(file, bytes):
+                self.buffer = BytesIO(file)
+            else:
+                self.buffer = cast(BinaryIO, file)
+
+            # 获取文件大小并重置指针
+            self.end = self.buffer.seek(0, 2)
+            self.buffer.seek(0)
+        except FileNotFoundError as e:
+            logger.error(f"文件未找到: {e}")
+            # 确保关闭任何已打开的资源
+            self.close()
+            # 重新抛出异常
+            raise
 
     def _unpack(self, fmt: str, one: bool = True) -> Any:
         """
@@ -232,9 +243,14 @@ class BinaryReader:
         """
         关闭文件资源
         """
-        if not self._closed and hasattr(self, 'buffer'):
-            self.buffer.close()
-            self._closed = True
+        if hasattr(self, 'buffer') and self.buffer is not None and not self._closed:
+            try:
+                self.buffer.close()
+            except Exception as e:
+                logger.error(f"关闭文件时出错: {e}")
+            finally:
+                self.buffer = None
+                self._closed = True
 
     def __enter__(self) -> 'BinaryReader':
         """
@@ -253,4 +269,3 @@ class BinaryReader:
         析构函数，确保资源被释放
         """
         self.close()
-
