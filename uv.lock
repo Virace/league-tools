@@ -92,7 +92,7 @@ wheels = [
 
 [[package]]
 name = "league-tools"
-version = "0.2.3"
+version = "1.0.0a2"
 source = { editable = "." }
 dependencies = [
     { name = "loguru" },
