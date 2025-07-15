@@ -133,3 +133,4 @@ dmypy.json
 .vscode
 test.py
 /poetry.lock
+.cursor/
