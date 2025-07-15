@@ -4,8 +4,8 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/27 18:28
-# @Update  : 2025/4/26 3:26
-# @Detail  : 
+# @Update  : 2025/5/4 3:48
+# @Detail  :  历史遗留代码, 已弃用
 
 # References : http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk)#HIRC_section
 
@@ -18,7 +18,7 @@ from loguru import logger
 
 from src.league_tools.core.section import WemFile
 from src.league_tools.formats.bin.parser import BIN, StringHash
-from src.league_tools.formats.bnk.parser import BNK, HIRC
+from src.league_tools.formats.bnk.parser import BNK
 from src.league_tools.formats.wpk.parser import WPK
 from src.league_tools.core import BinaryReader
 from src.league_tools.utils.type_hints import StrPath
@@ -108,7 +108,7 @@ def get_audio_hash_by_rs_containers(event_str, event_id, rs_containers, sounds):
     return res
 
 
-def _get_event_hashtable(hirc: HIRC, action_hash: List[StringHash]) -> List[StringHash]:
+def _get_event_hashtable(hirc, action_hash: List[StringHash]) -> List[StringHash]:
     """
     根据bnk文件中hirc块以及bin文件中提取的事件哈希表, 返回事件于音频ID对应哈希表
     这部分代码, 逻辑未理清.
@@ -350,4 +350,5 @@ def extract_audio(bin_file: Union[StrPath, List[StringHash]], event_file, audio_
                         temp[file.id].symlink_to(_dir.joinpath(name))
                     except FileExistsError:
                         pass
+
 

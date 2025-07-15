@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2025/4/26 3:16
+# @Update  : 2025/5/4 8:17
 # @Detail  : 英雄联盟皮肤Bin文件解析(提取语音触发事件名称与音乐数据)
 
 from typing import List, Optional
@@ -31,7 +31,7 @@ class BIN(SectionNoId):
     def _read(self):
         """读取并解析BIN文件内容"""
         # 初始化属性
-        self.data = []  # 主要数据结构：音频组列表
+        self.data: List[AudioGroup] = []  # 主要数据结构：音频组列表
         self.is_skin_file = False
         self.theme_music = []  # 主题音乐，通常只有皮肤BIN文件有
 
@@ -381,3 +381,4 @@ class BIN(SectionNoId):
             base_info += f', Theme_Music: {theme_music_count}'
 
         return base_info
+

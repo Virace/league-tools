@@ -100,7 +100,7 @@ class WPK(SectionNoId):
                     )
                     
                     self.files.append(wem_file)
-                    logger.debug(f"解析WPK文件 #{i+1}: {filename}, 偏移={offset}, 长度={length}")
+                    logger.trace(f"解析WPK文件 #{i+1}: {filename}, 偏移={offset}, 长度={length}")
                     
                 except Exception as e:
                     error_msg = f"解析WPK文件 #{i+1} 时出错: {str(e)}"

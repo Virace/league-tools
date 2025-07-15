@@ -4,13 +4,13 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2025/5/10 12:00
-# @Update  : 2025/5/13 14:20
+# @Update  : 2025/7/15 21:35
 # @Detail  : wwiser工具封装
 
 import re
 import subprocess
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import requests
 from loguru import logger

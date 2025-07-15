@@ -4,7 +4,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2025/5/10 12:00
-# @Update  : 2025/5/4 2:31
+# @Update  : 2025/5/5 3:51
 # @Detail  : 基于wwiser XML的HIRC兼容对象，events.bnk
 
 import os
@@ -708,7 +708,7 @@ class WwiserHIRC:
 
         # 根据动作类型获取特定参数
         if action_type == 0x1901:  # Switch Action
-            id_ext = self._get_int_value(obj_elem, ".//object[@name='ActionInitialValues']/field[@name='idExt']")
+            id_ext = self._get_int_value(obj_elem, ".//field[@name='idExt']")
             switch_group_id = self._get_int_value(
                 obj_elem,
                 ".//object[@name='ActionInitialValues']/object[@name='SwitchActionParams']/field[@name='ulSwitchGroupID']"
@@ -729,7 +729,7 @@ class WwiserHIRC:
             )
         else:
             # 其他动作类型
-            id_ext = self._get_int_value(obj_elem, "./field[@name='idExt']")
+            id_ext = self._get_int_value(obj_elem, ".//field[@name='idExt']")
 
         return Action(
             object_id=obj_id,
