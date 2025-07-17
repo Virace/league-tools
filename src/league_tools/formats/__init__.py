@@ -4,10 +4,11 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/3/4 18:46
-# @Update  : 2025/5/4 8:05
+# @Update  : 2025/7/16 1:19
 # @Detail  : 
 
-from src.league_tools.formats.bin.parser import BIN, StringHash
+from src.league_tools.formats.bin.parser import BIN
+from src.league_tools.formats.bin.models import StringHash
 from src.league_tools.formats.bnk.parser import BNK
 from src.league_tools.formats.bnk.wwiser import WwiserHIRC
 from src.league_tools.formats.wad.parser import WAD, WadHeaderAnalyzer
