@@ -15,7 +15,7 @@ from typing import Optional
 import requests
 from loguru import logger
 
-from src.league_tools.utils.type_hints import StrPath
+from league_tools.utils.type_hints import StrPath
 
 
 class WwiserManager:

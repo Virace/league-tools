@@ -7,7 +7,7 @@
 # @Update  : 2025/7/14 22:25
 # @Detail  : Wwise bnk文件, BKHD块
 
-from src.league_tools.core.section import SectionNoId
+from league_tools.core.section import SectionNoId
 
 
 class BKHD(SectionNoId):

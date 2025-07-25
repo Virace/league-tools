@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
 
-from src.league_tools.core import BinaryReader
-from src.league_tools.utils.type_hints import DataSource
+from league_tools.core import BinaryReader
+from league_tools.utils.type_hints import DataSource
 
 
 class SectionBase:

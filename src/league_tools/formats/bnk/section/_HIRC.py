@@ -11,7 +11,7 @@ from typing import Dict, Optional, List
 from enum import IntEnum
 
 from loguru import logger
-from src.league_tools.core.section import SectionNoId, SectionBase
+from league_tools.core.section import SectionNoId, SectionBase
 
 
 class _HIRCBase(SectionBase):

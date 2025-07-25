@@ -15,7 +15,7 @@ from typing import Optional, Any, BinaryIO, cast
 
 from loguru import logger
 
-from src.league_tools.utils.type_hints import BinaryData, DataSource
+from league_tools.utils.type_hints import BinaryData, DataSource
 
 
 class BinaryReader:

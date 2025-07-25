@@ -19,9 +19,9 @@ import xxhash
 import zstd
 from loguru import logger
 
-from src.league_tools.core import BinaryReader
-from src.league_tools.core.section import SectionNoId
-from src.league_tools.utils.type_hints import StrPath
+from league_tools.core import BinaryReader
+from league_tools.core.section import SectionNoId
+from league_tools.utils.type_hints import StrPath
 
 
 class MalformedSubchunkError(Exception):
@@ -183,7 +183,7 @@ class WAD(WadHeaderAnalyzer):
         xx = xxhash.xxh64()
         xx.update(path.lower().encode('utf-8'))
         hash_value = xx.intdigest()
-        logger.info(f"计算路径哈希: {path} -> {hash_value:x}")
+        logger.debug(f"计算路径哈希: {path} -> {hash_value:x}")
         return hash_value
 
     def _decompress_subchunks(self, file: WADSection, data: bytes) -> bytes:

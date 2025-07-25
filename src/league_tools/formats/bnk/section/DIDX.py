@@ -8,7 +8,7 @@
 # @Detail  : Wwise bnk文件, DIDX块
 
 from loguru import logger
-from src.league_tools.core.section import SectionNoIdBNK, WemFile
+from league_tools.core.section import SectionNoIdBNK, WemFile
 
 
 class DIDXFormatError(Exception):

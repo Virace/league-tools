@@ -17,8 +17,8 @@ import time
 from loguru import logger
 from lxml import etree
 
-from src.league_tools.formats.bnk.section.HIRC import HIRCType, Sound, Action, Event, RanSeqCntr, SwitchCntr
-from src.league_tools.utils.xml import MultiRootXmlParser
+from league_tools.formats.bnk.section.HIRC import HIRCType, Sound, Action, Event, RanSeqCntr, SwitchCntr
+from league_tools.utils.xml import MultiRootXmlParser
 
 
 class WwiserError(Exception):

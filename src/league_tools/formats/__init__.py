@@ -7,12 +7,12 @@
 # @Update  : 2025/7/16 1:19
 # @Detail  : 
 
-from src.league_tools.formats.bin.parser import BIN
-from src.league_tools.formats.bin.models import StringHash
-from src.league_tools.formats.bnk.parser import BNK
-from src.league_tools.formats.bnk.wwiser import WwiserHIRC
-from src.league_tools.formats.wad.parser import WAD, WadHeaderAnalyzer
-from src.league_tools.formats.wpk.parser import WPK
+from league_tools.formats.bin.parser import BIN
+from league_tools.formats.bin.models import StringHash
+from league_tools.formats.bnk.parser import BNK
+from league_tools.formats.bnk.wwiser import WwiserHIRC
+from league_tools.formats.wad.parser import WAD, WadHeaderAnalyzer
+from league_tools.formats.wpk.parser import WPK
 
 __all__ = [
     'BIN',

@@ -15,15 +15,15 @@ from typing import Dict, List, Set, Optional, Any, Union, Tuple, Iterator
 
 from loguru import logger
 
-from src.league_tools.core import BinaryReader
-from src.league_tools.core.section import WemFile
-from src.league_tools.formats.bin.models import StringHash
-from src.league_tools.formats.bin.parser import BIN
-from src.league_tools.formats.bnk.parser import BNK
-from src.league_tools.formats.bnk.wwiser import WwiserHIRC, WwiserBank
-from src.league_tools.formats.wad.parser import WAD
-from src.league_tools.utils.type_hints import StrPath, DataSource
-from src.league_tools.utils.wwiser import WwiserManager
+from league_tools.core import BinaryReader
+from league_tools.core.section import WemFile
+from league_tools.formats.bin.models import StringHash
+from league_tools.formats.bin.parser import BIN
+from league_tools.formats.bnk.parser import BNK
+from league_tools.formats.bnk.wwiser import WwiserHIRC, WwiserBank
+from league_tools.formats.wad.parser import WAD
+from league_tools.utils.type_hints import StrPath, DataSource
+from league_tools.utils.wwiser import WwiserManager
 
 
 class BinAggregator:
@@ -176,7 +176,7 @@ class AudioFiles:
 
         # 解析WPK文件
         if audio_ext == '.wpk':
-            from src.league_tools.formats.wpk.parser import WPK
+            from league_tools.formats.wpk.parser import WPK
             wpk = WPK(audio_file)
 
             if hash_table:

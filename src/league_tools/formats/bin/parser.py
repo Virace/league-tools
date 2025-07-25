@@ -11,8 +11,8 @@ from typing import List, Optional
 
 from loguru import logger
 
-from src.league_tools.core.section import SectionNoId
-from src.league_tools.utils.hash import str_fnv_32
+from league_tools.core.section import SectionNoId
+from league_tools.utils.hash import str_fnv_32
 from .constants import *
 from .models import StringHash, EventData, MusicData, AudioGroup
 

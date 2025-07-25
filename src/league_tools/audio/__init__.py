@@ -13,7 +13,7 @@
 #     extract_audio
 # )
 
-from src.league_tools.audio.hash import Processor
+from league_tools.audio.hash import Processor
 
 __all__ = [
     # 提取器函数
