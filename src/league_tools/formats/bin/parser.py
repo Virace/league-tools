@@ -1,11 +1,13 @@
-# -*- coding: utf-8 -*-
+# 🐍 Although never is often better than *right* now.
+# 🐼 然而不假思索还不如不做
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 13:14
-# @Update  : 2025/5/4 8:17
+# @Update  : 2025/7/27 5:26
 # @Detail  : 英雄联盟皮肤Bin文件解析(提取语音触发事件名称与音乐数据)
+
 
 from typing import List, Optional
 
@@ -26,13 +28,13 @@ class BIN(SectionNoId):
     2. 确定文件类型(皮肤文件 or 地图/公共资源文件)
     3. 搜索并处理BANK_UNITS和关联的MUSIC结构
     """
-    __slots__ = ['data', 'is_skin_file', 'theme_music']
+    __slots__ = ['data', 'is_skin', 'theme_music']
 
     def _read(self):
         """读取并解析BIN文件内容"""
         # 初始化属性
         self.data: List[AudioGroup] = []  # 主要数据结构：音频组列表
-        self.is_skin_file = False
+        self.is_skin = False
         self.theme_music = []  # 主题音乐，通常只有皮肤BIN文件有
 
         # 1. 验证文件头
@@ -46,7 +48,7 @@ class BIN(SectionNoId):
         skin_audio_pos = self._find_structure(SKIN_AUDIO_PROPERTIES)
         if skin_audio_pos != -1:
             logger.debug("检测到皮肤文件")
-            self.is_skin_file = True
+            self.is_skin = True
 
             # 如果是皮肤文件，查找并处理主题音乐
             self._data.seek(0, 0)
@@ -69,7 +71,7 @@ class BIN(SectionNoId):
             audio_group = AudioGroup(bank_units=bank_units)
 
             # 检查是否有关联的MUSIC数据(非皮肤文件才有)
-            if not self.is_skin_file:
+            if not self.is_skin:
                 # 记录当前位置，以便检查是否是MUSIC标记
                 current_pos = self._data.buffer.tell()
                 possible_music_mark = self._data.customize('<I')
@@ -372,7 +374,7 @@ class BIN(SectionNoId):
         groups_with_music = sum(1 for group in self.data if group.music is not None)
         theme_music_count = len(self.theme_music)
 
-        base_info = (f'Skin_File: {self.is_skin_file}, '
+        base_info = (f'Skin_File: {self.is_skin}, '
                      f'Audio_Groups: {total_units}, '
                      f'Total_Events: {total_events}, '
                      f'Groups_With_Music: {groups_with_music}')
