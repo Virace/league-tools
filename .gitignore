@@ -139,4 +139,3 @@ test_*.py
 *.pyz
 raw/
 data/
-docs/
