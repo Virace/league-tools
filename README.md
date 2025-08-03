@@ -151,25 +151,25 @@ from league_tools.formats.bin.parser import BIN
 bin_file = BIN('path/to/your/skin.bin')
 
 # 检查是否为皮肤文件
-if not bin_file.is_skin_file:
+if not bin_file.is_skin:
     print("这是一个通用的BIN文件，而非皮肤文件。")
 
 # 遍历文件中的音频组 (AudioGroup)
 # 每个AudioGroup包含一个或多个BankUnit
 for i, audio_group in enumerate(bin_file.data):
-    print(f"--- 音频组 #{i+1} ---")
-    
+    print(f"--- 音频组 #{i + 1} ---")
+
     # 遍历BankUnit (通常按类别划分，如Attack, Spell, Emote)
     for unit in audio_group.bank_units:
         print(f"  类别: {unit.category}")
         print(f"  关联的Bank文件: {unit.bank_path}")
-        
+
         # 打印此类别下的所有音频事件
         for event in unit.events:
             # event.string 是事件名称, e.g., "Play_vo_Gwen_Skin01_Attack2D_3"
             # event.hash 是事件名称的FNV-1a 32位哈希
             print(f"    - 事件: {event.string} (哈希: {event.hash:x})")
-            
+
     # 如果音频组有关联的音乐数据
     if audio_group.music:
         print("  关联音乐数据:")

@@ -1,18 +1,21 @@
-# -*- coding: utf-8 -*-
+# 🐍 If the implementation is hard to explain, it's a bad idea.
+# 🐼 很难解释的，必然是坏方法
 # @Author  : Virace
 # @Email   : Virace@aliyun.com
 # @Site    : x-item.com
 # @Software: Pycharm
 # @Create  : 2025/4/26 3:15
-# @Update  : 2025/4/26 3:15
-# @Detail  :
+# @Update  : 2025/7/28 0:36
+# @Detail  : 
+
 
 import json
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 
-@dataclass
+@dataclass(eq=True)
 class StringHash:
     """字符串哈希数据类"""
 
@@ -33,6 +36,14 @@ class StringHash:
                 return json.JSONEncoder.default(self, obj)
 
         return Encoder
+
+    def to_dict(self) -> dict:
+        """转换为字典"""
+        return self.__dict__
+
+    def to_json(self) -> str:
+        """转换为JSON字符串"""
+        return json.dumps(self.to_dict(), ensure_ascii=False)
 
     def __eq__(self, other):
         if not isinstance(other, StringHash):
@@ -69,9 +80,7 @@ class EventData:
         class Encoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, EventData):
-                    result = obj.__dict__.copy()
-                    result["events"] = [event.__dict__ for event in obj.events]
-                    return result
+                    return obj.to_dict()
                 return json.JSONEncoder.default(self, obj)
 
         return Encoder
@@ -80,7 +89,7 @@ class EventData:
         """转换为字典"""
         return {
             "category": self.category,
-            "events": [event.__dict__ for event in self.events],
+            "events": [event.to_dict() for event in self.events],
             "bank_path": self.bank_path,
         }
 
@@ -104,6 +113,30 @@ class EventData:
         data = json.loads(json_str)
         return cls.from_dict(data)
 
+    def __eq__(self, other):
+        if not isinstance(other, EventData):
+            return NotImplemented
+        # 比较时，只关注 event.string，并且忽略顺序
+        self_event_strings = [e.string for e in self.events]
+        other_event_strings = [e.string for e in other.events]
+        # 使用 Counter 进行顺序无关的比较
+        return (
+            self.category == other.category
+            and Counter(self_event_strings) == Counter(other_event_strings)
+            and Counter(self.bank_path) == Counter(other.bank_path)
+        )
+
+    def __hash__(self):
+        # 为了让对象可哈希且顺序无关，我们基于 Counter 和 frozenset 来创建哈希
+        event_strings = [e.string for e in self.events]
+        return hash(
+            (
+                self.category,
+                frozenset(Counter(event_strings).items()),
+                frozenset(self.bank_path),
+            )
+        )
+
     def __repr__(self):
         return (
             f"Category: {self.category}, "
@@ -112,7 +145,7 @@ class EventData:
         )
 
 
-@dataclass
+@dataclass(eq=True)
 class MusicData:
     """音乐数据类"""
 
@@ -184,7 +217,7 @@ class MusicData:
         return base_info
 
 
-@dataclass
+@dataclass(eq=True)
 class AudioGroup:
     """
     音频组，包含一组银行单元和可选的音乐数据

@@ -1,15 +1,3 @@
-# 🐍 Readability counts.
-# 🐼 可读性很重要！
-# @Author  : Virace
-# @Email   : Virace@aliyun.com
-# @Site    : x-item.com
-# @Software: Pycharm
-# @Create  : 2025/2/9 4:24
-# @Update  : 2025/7/25 23:31
-# @Detail  : 
-
-
-# -*- coding: utf-8 -*-
 # 🐍 Now is better than never.
 # 🐼 做优于不做
 # @Author  : Virace
@@ -17,7 +5,7 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2021/2/28 4:36
-# @Update  : 2025/7/25 23:17
+# @Update  : 2025/7/31 23:54
 # @Detail  : bnk文件解析, audio.bnk
 
 
@@ -100,6 +88,7 @@ class BNK(SectionNoId):
 
     # 当前支持的资源库生成器版本列表
     SUPPORTED_VERSIONS = {
+        132,  # mode_slime2018_sfx_audio.bnk
         134,
         145,
     }
