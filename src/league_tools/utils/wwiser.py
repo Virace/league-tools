@@ -5,10 +5,11 @@
 # @Site    : x-item.com
 # @Software: PyCharm
 # @Create  : 2025/5/10 12:00
-# @Update  : 2025/8/4 3:46
+# @Update  : 2025/8/4 9:24
 # @Detail  : wwiser工具封装
 
 
+import json
 import os
 import re
 import subprocess
@@ -16,7 +17,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-import requests
+import urllib3
 from loguru import logger
 
 from league_tools.utils.type_hints import StrPath
@@ -188,6 +189,9 @@ class WwiserManager(metaclass=Singleton):
         :param version: 版本号，默认为latest
         :return: 下载的wwiser路径或None
         """
+        # 创建HTTP连接池管理器
+        http = urllib3.PoolManager()
+
         # 默认保存到工具目录
         if not output_dir:
             output_dir = Path(__file__).parent
@@ -207,9 +211,13 @@ class WwiserManager(metaclass=Singleton):
             if version == "latest":
                 try:
                     logger.info("尝试获取GitHub最新版本信息...")
-                    response = requests.get(self.GITHUB_API_URL, timeout=5)
-                    response.raise_for_status()
-                    release_info = response.json()
+                    response = http.request("GET", self.GITHUB_API_URL, timeout=5)
+
+                    if response.status != 200:
+                        raise urllib3.exceptions.HTTPError(f"HTTP {response.status}")
+
+                    # 解析JSON响应
+                    release_info = json.loads(response.data.decode("utf-8"))
 
                     # 获取版本号和下载URL
                     version = release_info.get("tag_name", "").strip("v")
@@ -222,7 +230,12 @@ class WwiserManager(metaclass=Singleton):
                             break
 
                     logger.info(f"找到最新版本: {version}")
-                except (requests.RequestException, ValueError) as e:
+                except (
+                    urllib3.exceptions.HTTPError,
+                    urllib3.exceptions.RequestError,
+                    ValueError,
+                    json.JSONDecodeError,
+                ) as e:
                     logger.warning(f"获取GitHub版本信息失败: {e}")
                     logger.warning("将尝试使用备用方式下载")
 
@@ -248,14 +261,17 @@ class WwiserManager(metaclass=Singleton):
 
             # 尝试直接从GitHub下载
             try:
-                response = requests.get(download_url, timeout=5)
-                response.raise_for_status()
+                response = http.request("GET", download_url, timeout=5)
+
+                if response.status != 200:
+                    raise urllib3.exceptions.HTTPError(f"HTTP {response.status}")
+
                 # 文件下载成功
                 with open(output_path, "wb") as f:
-                    f.write(response.content)
+                    f.write(response.data)
                 logger.info(f"wwiser.pyz 下载完成: {output_path}")
                 return output_path
-            except requests.RequestException as e:
+            except (urllib3.exceptions.HTTPError, urllib3.exceptions.RequestError) as e:
                 logger.warning(f"从GitHub下载失败: {e}")
 
                 # 尝试使用ghfast CDN
@@ -264,15 +280,20 @@ class WwiserManager(metaclass=Singleton):
                     ghfast_url = f"{ghfast_cdn}{download_url}"
                     logger.debug(f"备用下载链接: {ghfast_url}")
 
-                    response = requests.get(ghfast_url, timeout=10)
-                    response.raise_for_status()
+                    response = http.request("GET", ghfast_url, timeout=10)
+
+                    if response.status != 200:
+                        raise urllib3.exceptions.HTTPError(f"HTTP {response.status}")
 
                     with open(output_path, "wb") as f:
-                        f.write(response.content)
+                        f.write(response.data)
 
                     logger.info(f"使用备用CDN下载成功: {output_path}")
                     return output_path
-                except requests.RequestException as e:
+                except (
+                    urllib3.exceptions.HTTPError,
+                    urllib3.exceptions.RequestError,
+                ) as e:
                     logger.error(f"从备用CDN下载失败: {e}")
 
             logger.error("所有下载尝试均失败")
