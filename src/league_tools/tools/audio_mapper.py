@@ -5,7 +5,7 @@
 # @Site    : x-item.com
 # @Software: Cursor
 # @Create  : 2025/1/20 12:00
-# @Update  : 2025/8/4 7:04
+# @Update  : 2025/8/4 13:42
 # @Detail  : 音频事件映射工具
 
 
@@ -41,7 +41,16 @@ class AudioMapping:
     reverse_mapping: Dict[int, List[str]]  # {sound_id: [event_names]}
 
     def __post_init__(self):
-        """初始化后处理：如果反向映射为空，则自动构建"""
+        """
+        初始化后处理：确保数据排序和构建反向映射
+
+        对传入的正向映射数据进行排序，确保数据一致性。
+        """
+        # 对正向映射的值进行排序，确保数据一致性
+        for event_name in self.forward_mapping:
+            self.forward_mapping[event_name] = sorted(self.forward_mapping[event_name])
+
+        # 如果反向映射为空，则自动构建
         if not self.reverse_mapping and self.forward_mapping:
             self.reverse_mapping = self._build_reverse_mapping(self.forward_mapping)
 
@@ -49,6 +58,8 @@ class AudioMapping:
     def _build_reverse_mapping(forward: Dict[str, List[int]]) -> Dict[int, List[str]]:
         """
         从正向映射构建反向映射
+
+        确保生成的反向映射中的事件名称列表是排序的，以保证数据一致性。
 
         :param forward: 正向映射字典
         :return: 反向映射字典
@@ -59,6 +70,11 @@ class AudioMapping:
                 if sound_id not in reverse:
                     reverse[sound_id] = []
                 reverse[sound_id].append(event_name)
+
+        # 对每个音频ID对应的事件名称列表进行排序，确保数据一致性
+        for sound_id in reverse:
+            reverse[sound_id].sort()
+
         return reverse
 
     # ========================= 查询方法 =========================
@@ -67,19 +83,23 @@ class AudioMapping:
         """
         根据音频文件ID查找对应的事件名称列表
 
+        返回的事件名称列表已排序，确保结果一致性。
+
         :param sound_id: 音频文件ID
-        :return: 包含该音频文件的事件名称列表
+        :return: 包含该音频文件的事件名称列表（已排序）
         """
-        return self.reverse_mapping.get(sound_id, [])
+        return sorted(self.reverse_mapping.get(sound_id, []))
 
     def find_sounds_by_event_name(self, event_name: str) -> List[int]:
         """
         根据事件名称查找对应的音频文件ID列表
 
+        返回的音频文件ID列表已排序，确保结果一致性。
+
         :param event_name: 事件名称
-        :return: 该事件包含的音频文件ID列表
+        :return: 该事件包含的音频文件ID列表（已排序）
         """
-        return self.forward_mapping.get(event_name, [])
+        return sorted(self.forward_mapping.get(event_name, []))
 
     def has_sound_id(self, sound_id: int) -> bool:
         """
@@ -111,11 +131,15 @@ class AudioMapping:
         """
         批量查找多个音频文件ID对应的事件
 
+        返回的结果字典按音频文件ID排序，每个事件名称列表也已排序。
+
         :param sound_ids: 音频文件ID列表
-        :return: {音频文件ID: [事件名称列表]}
+        :return: {音频文件ID: [事件名称列表]}（结果已排序）
         """
+        # 按音频文件ID排序处理，确保结果一致性
         return {
-            sound_id: self.find_events_by_sound_id(sound_id) for sound_id in sound_ids
+            sound_id: self.find_events_by_sound_id(sound_id)
+            for sound_id in sorted(sound_ids)
         }
 
     def find_sounds_by_event_names(
@@ -124,12 +148,15 @@ class AudioMapping:
         """
         批量查找多个事件名称对应的音频文件
 
+        返回的结果字典按事件名称排序，每个音频文件ID列表也已排序。
+
         :param event_names: 事件名称列表
-        :return: {事件名称: [音频文件ID列表]}
+        :return: {事件名称: [音频文件ID列表]}（结果已排序）
         """
+        # 按事件名称排序处理，确保结果一致性
         return {
             event_name: self.find_sounds_by_event_name(event_name)
-            for event_name in event_names
+            for event_name in sorted(event_names)
         }
 
     # ========================= 统计方法 =========================
@@ -179,11 +206,23 @@ class AudioMapping:
         """
         转换为字典格式，便于序列化或传输
 
-        :return: 完整的映射数据字典
+        输出的字典键按顺序排列，确保结果一致性。
+
+        :return: 完整的映射数据字典（键已排序）
         """
+        # 确保正向映射的键按字母顺序排列
+        sorted_forward_mapping = {
+            k: sorted(v) for k, v in sorted(self.forward_mapping.items())
+        }
+
+        # 确保反向映射的键按数字顺序排列
+        sorted_reverse_mapping = {
+            str(k): sorted(v) for k, v in sorted(self.reverse_mapping.items())
+        }
+
         return {
-            "forward_mapping": self.forward_mapping,
-            "reverse_mapping": {str(k): v for k, v in self.reverse_mapping.items()},
+            "forward_mapping": sorted_forward_mapping,
+            "reverse_mapping": sorted_reverse_mapping,
             "stats": self.stats,
             "sound_usage_stats": self.get_sound_usage_stats(),
         }
@@ -192,6 +231,8 @@ class AudioMapping:
         """
         与另一个AudioMapping合并
 
+        合并后的数据会保持排序状态，确保结果一致性。
+
         :param other: 另一个AudioMapping实例
         :return: 合并后的新AudioMapping实例
         """
@@ -199,12 +240,13 @@ class AudioMapping:
         merged_forward = self.forward_mapping.copy()
         for event_name, sound_ids in other.forward_mapping.items():
             if event_name in merged_forward:
-                # 如果事件名称已存在，合并音频ID列表并去重
+                # 如果事件名称已存在，合并音频ID列表并去重、排序
                 existing_ids = set(merged_forward[event_name])
                 new_ids = set(sound_ids)
-                merged_forward[event_name] = list(existing_ids | new_ids)
+                merged_forward[event_name] = sorted(list(existing_ids | new_ids))
             else:
-                merged_forward[event_name] = sound_ids.copy()
+                # 确保新添加的音频ID列表也是排序的
+                merged_forward[event_name] = sorted(sound_ids.copy())
 
         return AudioMapping(forward_mapping=merged_forward, reverse_mapping={})
 
@@ -263,6 +305,8 @@ class AudioEventMapper:
         """
         构建音频事件映射
 
+        生成的映射数据会按键排序，确保每次执行结果一致。
+
         :return: AudioMapping实例，包含完整的双向映射数据
         """
         # 提取所有事件字符串
@@ -275,14 +319,18 @@ class AudioEventMapper:
         # 构建正向映射
         forward_mapping = {}
 
-        for string_hash in string_list:
+        # 按事件名称排序处理，确保结果一致性
+        sorted_string_list = sorted(string_list, key=lambda x: x.string)
+
+        for string_hash in sorted_string_list:
             event_name = string_hash.string
             event_id = string_hash.hash
 
             try:
                 sound_ids = self._find_sound_ids_for_event(event_id)
                 if sound_ids:
-                    forward_mapping[event_name] = sound_ids
+                    # 确保音频ID列表是排序的
+                    forward_mapping[event_name] = sorted(sound_ids)
             except Exception:
                 # 忽略个别事件的错误，继续处理其他事件
                 continue
@@ -392,7 +440,7 @@ class AudioEventMapper:
                 if hasattr(obj, "child_ids"):
                     queue.extend(obj.child_ids)
 
-        return list(set(sound_ids))  # 去重
+        return sorted(list(set(sound_ids)))  # 去重并排序
 
     def _get_action_target_id(self, action_obj) -> Optional[int]:
         """
@@ -450,9 +498,9 @@ class MappingAnalyzer:
             "categorized_count": len(categorized),
             "uncategorized_count": len(uncategorized),
             "coverage_rate": round(coverage_rate, 2),
-            "uncategorized_files": sorted(uncategorized),
-            "mapping_not_exist": sorted(mapping_not_exist),
-            "categorized_files": sorted(categorized),
+            "uncategorized_files": sorted(list(uncategorized)),
+            "mapping_not_exist": sorted(list(mapping_not_exist)),
+            "categorized_files": sorted(list(categorized)),
         }
 
     def analyze_event_complexity(self) -> Dict[str, any]:

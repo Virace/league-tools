@@ -180,9 +180,7 @@ class WAD(WadHeaderAnalyzer):
         :param path: 文件路径字符串。
         :return: 64位哈希值。
         """
-        xx = xxhash.xxh64()
-        xx.update(path.lower().encode('utf-8'))
-        hash_value = xx.intdigest()
+        hash_value = xxhash.xxh3_64_intdigest(path.lower().encode('utf-8'))
         logger.debug(f"计算路径哈希: {path} -> {hash_value:x}")
         return hash_value
 
