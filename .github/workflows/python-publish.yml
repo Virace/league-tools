@@ -33,16 +33,11 @@ jobs:
         run: |
           TAG_NAME="${{ github.event.release.tag_name }}"
           TAG_VERSION="${TAG_NAME#v}"
-          PROJECT_VERSION="$(python - <<'PY'
-import re
-from pathlib import Path
-content = Path("pyproject.toml").read_text(encoding="utf-8")
-match = re.search(r'^version\s*=\s*"([^"]+)"', content, flags=re.MULTILINE)
-if not match:
-    raise SystemExit("pyproject.toml 中未找到 version 字段")
-print(match.group(1))
-PY
-)"
+          PROJECT_VERSION="$(grep -E '^version[[:space:]]*=' pyproject.toml | head -n1 | sed -E 's/^version[[:space:]]*=[[:space:]]*\"([^\"]+)\"/\1/')"
+          if [[ -z "${PROJECT_VERSION}" ]]; then
+            echo "::error title=缺少版本字段::pyproject.toml 中未找到可解析的 version 字段"
+            exit 1
+          fi
 
           echo "tag_name=${TAG_NAME}"
           echo "tag_version=${TAG_VERSION}"
