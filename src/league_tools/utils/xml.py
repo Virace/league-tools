@@ -113,38 +113,45 @@ class MultiRootXmlParser:
         :yield: XML根节点元素
         """
         buffer = b""
-        in_root = False
-        root_data = b""
         parser = etree.XMLParser(**parser_options)
-        
+        end_tag = b"</root>"
+        end_len = len(end_tag)
+
         with open(xml_path, 'rb') as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
                     break
-                    
+
                 buffer += chunk
-                
-                # 处理缓冲区中的根节点
+
+                # 持续从缓冲区提取完整的 <root>...</root> 片段
                 while True:
-                    if not in_root:
-                        # 寻找根节点开始
-                        root_node = self._find_root_start(buffer)
-                        if not root_node:
-                            break
-                        
-                        buffer, in_root, root_data = root_node
-                    else:
-                        # 寻找根节点结束
-                        root_node = self._find_root_end(buffer, root_data)
-                        if not root_node:
-                            break
-                        
-                        buffer, in_root, root_data, root_elem = root_node
-                        
-                        # 处理找到的根节点
-                        if root_elem is not None and self._should_process_node(root_elem, filter_func):
-                            yield root_elem
+                    start_pos = buffer.find(b"<root")
+                    if start_pos == -1:
+                        # 保留末尾数据，避免标签跨块被截断
+                        if len(buffer) > 1024:
+                            buffer = buffer[-1024:]
+                        break
+
+                    if start_pos > 0:
+                        buffer = buffer[start_pos:]
+
+                    end_pos = buffer.find(end_tag)
+                    if end_pos == -1:
+                        break
+
+                    end_pos += end_len
+                    root_bytes = buffer[:end_pos]
+                    buffer = buffer[end_pos:]
+
+                    try:
+                        root_elem = etree.fromstring(root_bytes, parser=parser)
+                    except Exception:
+                        root_elem = None
+
+                    if root_elem is not None and self._should_process_node(root_elem, filter_func):
+                        yield root_elem
     
     def _find_root_start(self, buffer: bytes) -> Optional[tuple]:
         """在缓冲区中寻找根节点的开始

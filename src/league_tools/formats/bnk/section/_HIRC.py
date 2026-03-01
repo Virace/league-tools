@@ -7,6 +7,14 @@
 # @Update  : 2025/4/28 8:59
 # @Detail  : HIRC区块解析
 
+"""
+[已废弃逻辑留档]
+本模块为旧版 HIRC 二进制解析实现，仅用于历史留档与对照参考。
+
+当前项目主链路已切换为 `league_tools.formats.bnk.wwiser.WwiserHIRC`。
+请勿在新功能或测试中继续加载本模块；若需恢复使用，必须先完成重构并补齐测试。
+"""
+
 from typing import Dict, Optional, List
 from enum import IntEnum
 

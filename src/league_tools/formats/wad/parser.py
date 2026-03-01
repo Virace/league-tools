@@ -245,7 +245,7 @@ class WAD(WadHeaderAnalyzer):
                 # 设置位置到正确的偏移量
                 data_reader.seek(offset, 0)
                 # 读取子块头部: 压缩大小和未压缩大小
-                comp_size, uncomp_size = data_reader.customize('<II')
+                comp_size, uncomp_size = data_reader.customize('<II', False)
                 offset += 8  # 跳过头部
 
                 logger.trace(
