@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from league_tools.utils.wwiser import WwiserManager
 
 FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "external"
 MANIFEST_PATH = FIXTURE_ROOT / "manifest.json"
+REPORT_PATH = FIXTURE_ROOT / "full_chain_report.json"
 
 REQUIRED_FILE_KEYS = (
     "bin",
@@ -89,12 +91,231 @@ def _collect_bin_vo_events(bin_obj: BIN) -> list[str]:
     return events
 
 
+def _collect_bin_events_by_keyword(bin_obj: BIN, keyword: str) -> list[str]:
+    events: set[str] = set()
+    for group in bin_obj.data:
+        for unit in group.bank_units:
+            if keyword not in unit.category.lower():
+                continue
+            events.update(item.string for item in unit.events)
+    return sorted(events)
+
+
 def _extract_positive_wem_ids_from_bnk(bnk_obj: BNK) -> set[int]:
     return {wem.id for wem in bnk_obj.extract_files() if wem.id > 0}
 
 
 def _extract_positive_wem_ids_from_wpk(wpk_obj: WPK) -> set[int]:
     return {wem.id for wem in wpk_obj.extract_files() if wem.id > 0}
+
+
+def _summarize_bin(bin_obj: BIN) -> dict:
+    categories: list[str] = []
+    category_event_counts: dict[str, int] = {}
+    bank_unit_count = 0
+    total_event_count = 0
+
+    for group in bin_obj.data:
+        for unit in group.bank_units:
+            bank_unit_count += 1
+            categories.append(unit.category)
+            event_count = len(unit.events)
+            total_event_count += event_count
+            category_event_counts[unit.category] = category_event_counts.get(unit.category, 0) + event_count
+
+    sfx_events = _collect_bin_events_by_keyword(bin_obj, "sfx")
+    vo_events = _collect_bin_events_by_keyword(bin_obj, "vo")
+
+    return {
+        "is_skin": bool(bin_obj.is_skin),
+        "audio_group_count": len(bin_obj.data),
+        "bank_unit_count": bank_unit_count,
+        "total_event_count": total_event_count,
+        "categories": sorted(set(categories)),
+        "category_event_counts": dict(sorted(category_event_counts.items())),
+        "referenced_bank_files": sorted(_collect_bin_bank_paths(bin_obj)),
+        "sfx_event_count": len(sfx_events),
+        "vo_event_count": len(vo_events),
+        "sfx_event_names": sfx_events,
+        "vo_event_names": vo_events,
+    }
+
+
+def _summarize_bnk(bnk_obj: BNK, wem_files: list) -> dict:
+    positive_ids = sorted({wem.id for wem in wem_files if wem.id > 0})
+    payload_count = sum(1 for wem in wem_files if wem.id > 0 and wem.data)
+    return {
+        "soundbank_id": bnk_obj.get_soundbank_id(),
+        "version": bnk_obj.get_soundbank_version(),
+        "language_id": bnk_obj.get_language_id(),
+        "version_supported": bnk_obj.is_version_supported(),
+        "extracted_file_count": len(wem_files),
+        "positive_wem_ids": positive_ids,
+        "payload_file_count": payload_count,
+    }
+
+
+def _summarize_wpk(wpk_obj: WPK, wem_files: list) -> dict:
+    positive_ids = sorted({wem.id for wem in wem_files if wem.id > 0})
+    payload_count = sum(1 for wem in wem_files if wem.id > 0 and wem.data)
+    return {
+        "version": wpk_obj.version,
+        "declared_file_count": wpk_obj.file_count,
+        "extracted_file_count": len(wem_files),
+        "positive_wem_ids": positive_ids,
+        "payload_file_count": payload_count,
+    }
+
+
+def _summarize_hirc(hirc: WwiserHIRC) -> dict:
+    totals = {
+        "events": 0,
+        "actions": 0,
+        "sounds": 0,
+        "random_containers": 0,
+        "switch_containers": 0,
+    }
+    banks_summary: dict[str, dict] = {}
+    sound_source_ids: set[int] = set()
+
+    for bank_name, bank in sorted(hirc.banks.items()):
+        stats = bank.stats()
+        banks_summary[bank_name] = stats
+        for key in totals:
+            totals[key] += int(stats.get(key, 0))
+        for sound_obj in bank.sounds.values():
+            source_id = int(getattr(sound_obj, "source_id", 0))
+            if source_id > 0:
+                sound_source_ids.add(source_id)
+
+    return {
+        "bank_count": len(hirc.banks),
+        "banks": banks_summary,
+        "totals": totals,
+        "sound_source_ids": sorted(sound_source_ids),
+    }
+
+
+def _build_event_mapping_report(
+    event_names: list[str],
+    hirc: WwiserHIRC,
+    available_file_ids: set[int],
+) -> dict:
+    mapping = AudioEventMapper(event_names, hirc).build_mapping()
+    forward_mapping = mapping.forward_mapping
+    mapped_sound_ids = mapping.get_all_sound_ids()
+    available_ids = set(available_file_ids)
+
+    event_to_file_ids = []
+    for event_name in sorted(forward_mapping):
+        file_ids = sorted(set(forward_mapping[event_name]))
+        matched_ids = [file_id for file_id in file_ids if file_id in available_ids]
+        missing_ids = [file_id for file_id in file_ids if file_id not in available_ids]
+        event_to_file_ids.append(
+            {
+                "event_name": event_name,
+                "file_ids": file_ids,
+                "matched_file_ids": matched_ids,
+                "missing_file_ids": missing_ids,
+            }
+        )
+
+    return {
+        "input_event_count": len(event_names),
+        "mapped_event_count": len(forward_mapping),
+        "available_file_ids": sorted(available_ids),
+        "mapped_sound_ids": sorted(mapped_sound_ids),
+        "unmapped_available_file_ids": sorted(available_ids - mapped_sound_ids),
+        "mapping_not_in_available_file_ids": sorted(mapped_sound_ids - available_ids),
+        "event_to_file_ids": event_to_file_ids,
+    }
+
+
+def _build_champion_chain_report(entry: dict) -> dict:
+    champion = entry["champion"]
+    paths = _entry_paths(entry)
+
+    bin_obj = _parse_bin(str(paths["bin"]))
+    sfx_audio_bnk = _parse_bnk(str(paths["sfx_audio_bnk"]))
+    sfx_events_bnk = _parse_bnk(str(paths["sfx_events_bnk"]))
+    vo_audio_bnk = _parse_bnk(str(paths["vo_audio_bnk"]))
+    vo_events_bnk = _parse_bnk(str(paths["vo_events_bnk"]))
+    vo_audio_wpk = _parse_wpk(str(paths["vo_audio_wpk"]))
+
+    sfx_audio_wems = sfx_audio_bnk.extract_files()
+    sfx_events_wems = sfx_events_bnk.extract_files()
+    vo_audio_bnk_wems = vo_audio_bnk.extract_files()
+    vo_events_wems = vo_events_bnk.extract_files()
+    vo_audio_wpk_wems = vo_audio_wpk.extract_files()
+
+    sfx_audio_ids = {wem.id for wem in sfx_audio_wems if wem.id > 0}
+    vo_audio_bnk_ids = {wem.id for wem in vo_audio_bnk_wems if wem.id > 0}
+    vo_audio_wpk_ids = {wem.id for wem in vo_audio_wpk_wems if wem.id > 0}
+
+    sfx_event_names = _collect_bin_events_by_keyword(bin_obj, "sfx")
+    vo_event_names = _collect_bin_events_by_keyword(bin_obj, "vo")
+
+    sfx_hirc = _parse_hirc_from_bnk(str(paths["sfx_events_bnk"]))
+    vo_hirc = _parse_hirc_from_bnk(str(paths["vo_events_bnk"]))
+
+    return {
+        "champion": champion,
+        "skin": entry.get("skin"),
+        "files": entry.get("files", {}),
+        "bin": _summarize_bin(bin_obj),
+        "bnk": {
+            "sfx_audio_bnk": _summarize_bnk(sfx_audio_bnk, sfx_audio_wems),
+            "sfx_events_bnk": {
+                **_summarize_bnk(sfx_events_bnk, sfx_events_wems),
+                "hirc": _summarize_hirc(sfx_hirc),
+            },
+            "vo_audio_bnk": _summarize_bnk(vo_audio_bnk, vo_audio_bnk_wems),
+            "vo_events_bnk": {
+                **_summarize_bnk(vo_events_bnk, vo_events_wems),
+                "hirc": _summarize_hirc(vo_hirc),
+            },
+        },
+        "wpk": {
+            "vo_audio_wpk": _summarize_wpk(vo_audio_wpk, vo_audio_wpk_wems),
+        },
+        "mapping": {
+            "sfx_event_to_file_ids": _build_event_mapping_report(
+                sfx_event_names, sfx_hirc, sfx_audio_ids
+            ),
+            "vo_event_to_file_ids": _build_event_mapping_report(
+                vo_event_names, vo_hirc, vo_audio_wpk_ids
+            ),
+            "vo_audio_bnk_ids": sorted(vo_audio_bnk_ids),
+            "vo_audio_wpk_ids": sorted(vo_audio_wpk_ids),
+        },
+    }
+
+
+def _build_full_chain_report(manifest_data: dict) -> dict:
+    champions = manifest_data.get("champions", [])
+    return {
+        "schema_version": "1.0",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "fixture_root": str(FIXTURE_ROOT),
+        "manifest_path": str(MANIFEST_PATH),
+        "manifest_meta": {
+            "game_root": manifest_data.get("game_root"),
+            "locale": manifest_data.get("locale"),
+            "skin": manifest_data.get("skin"),
+            "champion_source": manifest_data.get("champion_source"),
+            "champion_count": len(champions),
+        },
+        "champions": [_build_champion_chain_report(entry) for entry in champions],
+    }
+
+
+def _write_full_chain_report(report: dict) -> Path:
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PATH.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return REPORT_PATH
 
 
 def test_manifest_entries_have_required_audio_files(manifest_data: dict) -> None:
@@ -200,3 +421,15 @@ def test_vo_mapping_covers_wpk_ids(manifest_data: dict) -> None:
 
         assert mapped_sound_ids, f"{champion} VO 事件未映射到任何声音ID"
         assert wpk_ids.issubset(mapped_sound_ids), f"{champion} WPK 中存在未被 VO 事件映射覆盖的声音ID"
+
+
+def test_generate_full_chain_report(manifest_data: dict) -> None:
+    wwiser_manager = _get_wwiser_manager()
+    if not wwiser_manager.wwiser_path:
+        pytest.skip("未找到 wwiser.pyz，跳过完整链路报告生成")
+
+    report = _build_full_chain_report(manifest_data)
+    report_path = _write_full_chain_report(report)
+
+    assert report_path.exists(), f"未生成完整链路报告: {report_path}"
+    assert len(report["champions"]) == len(manifest_data["champions"]), "报告英雄数量与清单不一致"
