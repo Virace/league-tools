@@ -59,7 +59,16 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
 exclude = [
-    "*.json"
+    "*.json",
+    ".ai_memory/**",
+    ".github/**",
+    "data/**",
+    "dist/**",
+    "docs/**",
+    "manual_tests/**",
+    "raw/**",
+    "scripts/**",
+    "tests/**",
 ]
 
 [tool.hatch.build.targets.wheel]
