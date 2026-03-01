@@ -41,7 +41,7 @@ def manifest_data() -> dict:
 
 def _entry_paths(entry: dict) -> dict[str, Path]:
     files = entry.get("files", {})
-    return {key: FIXTURE_ROOT / value for key, value in files.items()}
+    return {key: FIXTURE_ROOT / value for key, value in files.items() if isinstance(value, str)}
 
 
 @lru_cache(maxsize=128)
@@ -145,16 +145,39 @@ def test_bnk_and_wpk_have_valid_wem_entries(manifest_data: dict) -> None:
         assert vo_audio_bnk.is_version_supported(), f"{champion} vo_audio_bnk 版本不受支持"
         assert vo_events_bnk.is_version_supported(), f"{champion} vo_events_bnk 版本不受支持"
 
-        sfx_ids = _extract_positive_wem_ids_from_bnk(sfx_audio_bnk)
-        vo_audio_bnk_ids = _extract_positive_wem_ids_from_bnk(vo_audio_bnk)
-        wpk_ids = _extract_positive_wem_ids_from_wpk(vo_audio_wpk)
+        sfx_wems = sfx_audio_bnk.extract_files()
+        vo_audio_bnk_wems = vo_audio_bnk.extract_files()
+        wpk_wems = vo_audio_wpk.extract_files()
+
+        sfx_ids = {wem.id for wem in sfx_wems if wem.id > 0}
+        vo_audio_bnk_ids = {wem.id for wem in vo_audio_bnk_wems if wem.id > 0}
+        wpk_ids = {wem.id for wem in wpk_wems if wem.id > 0}
 
         assert sfx_ids, f"{champion} sfx_audio_bnk 未解析出任何 WEM ID"
         assert wpk_ids, f"{champion} vo_audio_wpk 未解析出任何 WEM ID"
         assert vo_audio_wpk.file_count >= len(wpk_ids), f"{champion} WPK file_count 与解析ID数量异常"
+        assert any(wem.data for wem in sfx_wems if wem.id > 0), f"{champion} sfx_audio_bnk 未加载到实际音频字节"
+        assert any(wem.data for wem in wpk_wems if wem.id > 0), f"{champion} vo_audio_wpk 未加载到实际音频字节"
 
         if vo_audio_bnk_ids:
             assert vo_audio_bnk_ids.issubset(wpk_ids), f"{champion} vo_audio_bnk 的WEM ID不在WPK中"
+
+
+def test_extracted_wem_payload_can_be_saved(manifest_data: dict, tmp_path: Path) -> None:
+    entry = manifest_data["champions"][0]
+    champion = entry["champion"]
+    paths = _entry_paths(entry)
+
+    vo_audio_wpk = _parse_wpk(str(paths["vo_audio_wpk"]))
+    positive_wems = [wem for wem in vo_audio_wpk.extract_files() if wem.id > 0 and wem.data]
+    assert positive_wems, f"{champion} vo_audio_wpk 未提取到可保存的 WEM 数据"
+
+    sample = positive_wems[0]
+    out_path = tmp_path / f"{champion.lower()}_{sample.id}.wem"
+    sample.save_file(out_path)
+
+    assert out_path.exists(), f"{champion} WEM 文件未成功落盘: {out_path}"
+    assert out_path.stat().st_size == len(sample.data), f"{champion} WEM 落盘大小与内存数据不一致"
 
 
 def test_vo_mapping_covers_wpk_ids(manifest_data: dict) -> None:
