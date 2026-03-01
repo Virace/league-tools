@@ -60,6 +60,34 @@ WSL 下可直接运行：
 
 另外，仓库中的自动化测试应放在 `tests/` 并遵循 `pytest` 规范；手动调试脚本请放到 `manual_tests/`（该目录默认不提交）。
 
+#### 测试样本准备（WAD 自动提取）
+
+可在运行测试前，自动从本地游戏目录提取样本：
+
+```bash
+./scripts/_uv.sh run python scripts/extract_wad_fixtures.py \
+  --game-root "/mnt/d/Games/Tencent/WeGameApps/英雄联盟/Game/DATA/FINAL/Champions" \
+  --locale zh_CN \
+  --sample-size 5 \
+  --skin 1 \
+  --output tests/fixtures/external
+```
+
+说明：
+
+- 默认使用脚本内置英雄池（`--champion-source hardcoded`）并按顺序抽样，保证稳定。
+- 如需从 CommunityDragon 最新列表获取候选英雄，可加 `--champion-source communitydragon`。
+- 需要随机化时显式加 `--shuffle`（可配合 `--seed` 复现）。
+
+也可让 pytest 在会话开始前自动执行提取：
+
+```bash
+./scripts/_uv.sh run pytest -q \
+  --prepare-fixtures \
+  --fixture-game-root "/mnt/d/Games/Tencent/WeGameApps/英雄联盟/Game/DATA/FINAL/Champions" \
+  --fixture-sample-size 5
+```
+
 ### 使用
 
 以下是如何使用本库解析四种核心文件格式的示例。

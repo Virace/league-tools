@@ -691,7 +691,6 @@ def main() -> int:
     all_copied = 0
     target_count = 1 if args.champion else args.sample_size
     selected_count = 0
-    skipped_incomplete = []
 
     for champion in candidate_champions:
         if selected_count >= target_count:
@@ -703,9 +702,6 @@ def main() -> int:
         if not args.allow_incomplete and not is_complete:
             for file_path in entry.get("_generated_abs", []):
                 Path(file_path).unlink(missing_ok=True)
-            skipped_incomplete.append(
-                {"champion": champion, "missing": entry["missing"]}
-            )
             logger.warning(f"[{champion}] 样本不完整，已跳过: {entry['missing']}")
             continue
 
@@ -713,9 +709,6 @@ def main() -> int:
         manifest["champions"].append(entry)
         all_copied += len(entry["files"])
         selected_count += 1
-
-    if skipped_incomplete:
-        manifest["skipped_incomplete"] = skipped_incomplete
 
     manifest_path = out_root / "manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as f:

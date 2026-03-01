@@ -44,10 +44,15 @@ explicit = true
 [dependency-groups]
 dev = [
     "psutil>=7.2.2",
+    "pytest>=8.4.2",
 ]
 
 [tool.uv]
 managed = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
 
 [tool.hatch.metadata]
 allow-direct-references = true

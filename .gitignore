@@ -146,3 +146,6 @@ manual_tests/
 raw/
 data/
 .ai_memory/
+tests/fixtures/**
+!tests/fixtures/
+!tests/fixtures/README.md
