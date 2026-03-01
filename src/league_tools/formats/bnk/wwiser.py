@@ -136,6 +136,7 @@ class WwiserHIRC:
         "_xml_file",  # XML文件路径
         "_bnk_file",  # BNK文件路径（用于缓存键生成）
         "_xml_parser",  # XML解析器
+        "_cache_dir_config",  # 缓存目录配置（初始化参数）
         "_cache_dir",  # 缓存目录
         "_use_cache",  # 是否使用缓存
         "_wwiser_manager",  # WwiserManager实例
@@ -161,17 +162,33 @@ class WwiserHIRC:
         self._xml_parser = MultiRootXmlParser()
         self.banks = {}  # 文件名 -> WwiserBank对象
         self._use_cache = use_cache
+        self._cache_dir_config = cache_dir
+        self._cache_dir = None
         self._wwiser_manager = wwiser_manager
 
+        # 仅在启用缓存时初始化缓存目录。
+        # use_cache=False 时不应因目录权限导致初始化失败。
+        if self._use_cache:
+            self._ensure_cache_dir()
+
+        if file_path:
+            self.load_file(file_path, wwiser_manager)
+
+    def _ensure_cache_dir(self) -> None:
+        """
+        确保缓存目录已初始化
+
+        在启用缓存时按需初始化，避免 use_cache=False 场景下的无意义目录访问。
+        """
+        if self._cache_dir is not None:
+            return
+
         try:
-            self._cache_dir = self._init_cache_dir(cache_dir)
+            self._cache_dir = self._init_cache_dir(self._cache_dir_config)
         except Exception as e:
             error_msg = f"初始化缓存目录失败: {str(e)}"
             logger.error(error_msg)
             raise WwiserCacheError(error_msg) from e
-
-        if file_path:
-            self.load_file(file_path, wwiser_manager)
 
     @classmethod
     def from_bnk(
@@ -440,6 +457,9 @@ class WwiserHIRC:
         if use_cache is not None:
             self._use_cache = use_cache
 
+        if self._use_cache:
+            self._ensure_cache_dir()
+
         # 清空当前数据
         self.clear()
 
@@ -565,6 +585,7 @@ class WwiserHIRC:
         :param xml_path: XML文件路径
         :return: 缓存文件路径
         """
+        self._ensure_cache_dir()
         cache_key = self._generate_cache_key(xml_path)
         return self._cache_dir / f"{cache_key}.hirc.pkl"
 
