@@ -104,6 +104,12 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-wsl/
+.venv-win/
+.venv-linux/
+.cache/
+.config/
+.state/
 env/
 venv/
 ENV/
@@ -135,7 +141,8 @@ test.py
 /poetry.lock
 .cursor/
 
-test_*.py
+manual_tests/
 *.pyz
 raw/
 data/
+.ai_memory/

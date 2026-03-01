@@ -4,6 +4,7 @@ WAD、BIN、BNK、WPK文件简单处理
 
 - [介绍](#介绍)
 - [安装](#安装)
+- [开发环境（Windows / WSL）](#开发环境windows--wsl)
 - [使用](#使用)
   - [解析 WPK 文件](#解析-wpk-文件)
   - [解析 BNK 文件](#解析-bnk-文件)
@@ -29,6 +30,35 @@ WAD、BIN、BNK、WPK文件简单处理
 `pip install league-tools`
 
 `pip install -e git+https://github.com/Virace/py-bnk-extract@package#egg=league_tools`
+
+### 开发环境（Windows / WSL）
+
+项目在 Windows 与 WSL 共享工作区时，请不要共用同一个 `.venv`，建议按平台分离：
+
+- Windows: `.venv-win`
+- WSL: `.venv-wsl`
+
+WSL 下可直接运行：
+
+```bash
+./scripts/_uv.sh init
+./scripts/_uv.sh run pytest -q
+```
+
+该脚本会统一设置项目内环境目录并调用 `uv`，默认使用：
+
+- `.venv-wsl`
+- `.cache/uv`（以及 `.cache/`）
+- `.config/`
+- `.state/`
+
+兼容旧入口（等价于 `./scripts/_uv.sh init`）：
+
+```bash
+./scripts/setup_wsl_env.sh
+```
+
+另外，仓库中的自动化测试应放在 `tests/` 并遵循 `pytest` 规范；手动调试脚本请放到 `manual_tests/`（该目录默认不提交）。
 
 ### 使用
 
