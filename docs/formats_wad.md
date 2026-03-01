@@ -279,6 +279,12 @@ print(f"通过哈希表提取了 {len(extracted)} 个文件")
 ```
 
 ### 路径哈希计算
+> 版本说明：
+> - WAD `3.4+` 使用 `xxh64`
+> - WAD `3.3` 及更早版本使用 `xxh3_64`
+>
+> 在实际解包时，`WAD.extract()` 会根据文件版本自动选择算法。
+
 ```python
 # 计算文件路径的哈希值
 file_path = "assets/characters/ahri/skins/base/audio/events.bnk"

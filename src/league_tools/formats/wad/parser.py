@@ -175,13 +175,53 @@ class WAD(WadHeaderAnalyzer):
     @staticmethod
     def get_hash(path: str) -> int:
         """
-        计算给定路径的哈希值，使用xxh3_64_intdigest与CDTB保持一致
+        计算给定路径的哈希值（旧版兼容，默认 xxh3_64）。
+
+        注意：
+        - 游戏数据 WAD v3.4+ 使用 xxh64。
+        - 本方法为向后兼容旧调用，仍保持 xxh3_64。
+        - 在解包流程中应优先使用实例方法 `_get_hash_for_path()`，
+          由 WAD 版本自动选择正确算法。
 
         :param path: 文件路径字符串。
         :return: 64位哈希值。
         """
-        hash_value = xxhash.xxh3_64_intdigest(path.lower().encode('utf-8'))
-        logger.debug(f"计算路径哈希: {path} -> {hash_value:x}")
+        hash_value = xxhash.xxh3_64_intdigest(path.lower().encode("utf-8"))
+        logger.debug(f"计算路径哈希(legacy_xxh3): {path} -> {hash_value:x}")
+        return hash_value
+
+    @staticmethod
+    def get_hash_v34(path: str) -> int:
+        """
+        计算给定路径的哈希值（WAD v3.4+，xxh64）。
+
+        :param path: 文件路径字符串。
+        :return: 64位哈希值。
+        """
+        hash_value = xxhash.xxh64_intdigest(path.lower().encode("utf-8"))
+        logger.debug(f"计算路径哈希(v34_xxh64): {path} -> {hash_value:x}")
+        return hash_value
+
+    def _use_v34_hash(self) -> bool:
+        """
+        当前WAD是否应使用 v3.4+ 哈希算法（xxh64）。
+        """
+        return self.version[0] == 3 and self.version[1] > 3
+
+    def _get_hash_for_path(self, path: str) -> int:
+        """
+        根据当前WAD版本选择路径哈希算法。
+
+        - v3.4+ -> xxh64
+        - 其余版本 -> xxh3_64（历史兼容）
+        """
+        if self._use_v34_hash():
+            hash_value = self.get_hash_v34(path)
+            logger.debug(f"使用v3.4+哈希算法(xxh64): {path} -> {hash_value:x}")
+            return hash_value
+
+        hash_value = self.get_hash(path)
+        logger.debug(f"使用旧版哈希算法(xxh3_64): {path} -> {hash_value:x}")
         return hash_value
 
     def _decompress_subchunks(self, file: WADSection, data: bytes) -> bytes:
@@ -339,11 +379,11 @@ class WAD(WadHeaderAnalyzer):
 
         logger.debug(f"开始提取 {len(paths)} 个文件")
         results = []
+        file_index = {item.path_hash: item for item in self.files}
         for i, path in enumerate(paths):
             logger.debug(f"[{i + 1}/{len(paths)}] 提取文件: {path}")
-            path_hash = self.get_hash(path)
-
-            matched_file = next((f for f in self.files if f.path_hash == path_hash), None)
+            path_hash = self._get_hash_for_path(path)
+            matched_file = file_index.get(path_hash)
 
             if matched_file:
                 logger.debug(f"找到匹配文件: hash={path_hash:x}, 偏移={matched_file.offset}")
