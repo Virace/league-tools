@@ -87,11 +87,30 @@ rg -n '^version = ' pyproject.toml
 
 ### 5.2 合并 test 到 package
 
+优先走常规合并：
+
 ```bash
 git switch package
 git pull --ff-only origin package
 git merge --no-ff test -m "merge(release): test -> package"
 git push origin package
+```
+
+若出现分支异常（历史分叉、冲突复杂、无法快速确认）：
+
+1. 先备份当前远端 `package`
+2. 再强制将 `test` 覆盖到 `package`
+
+```bash
+git fetch --all --prune
+OLD_PACKAGE_SHA="$(git rev-parse --short origin/package)"
+
+# 1) 备份旧 package
+git branch "backup/package-pre-${OLD_PACKAGE_SHA}" origin/package
+git push origin "backup/package-pre-${OLD_PACKAGE_SHA}"
+
+# 2) 强制覆盖 package（以 test 为准）
+git push --force-with-lease=package:${OLD_PACKAGE_SHA} origin test:package
 ```
 
 ### 5.3 在 package 创建 tag 并发布 GitHub Release
