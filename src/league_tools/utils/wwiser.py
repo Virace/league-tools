@@ -59,7 +59,7 @@ class WwiserManager(metaclass=Singleton):
     # GitHub API URL
     GITHUB_API_URL = "https://api.github.com/repos/bnnm/wwiser/releases/latest"
     # 期望的wwiser版本
-    EXPECTED_VERSION = "20241210"
+    EXPECTED_VERSION = "20250928"
 
     def __init__(
         self, wwiser_path: Optional[StrPath] = None, auto_download: bool = True
