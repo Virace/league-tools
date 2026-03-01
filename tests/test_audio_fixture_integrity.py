@@ -203,31 +203,23 @@ def _build_event_mapping_report(
 ) -> dict:
     mapping = AudioEventMapper(event_names, hirc).build_mapping()
     forward_mapping = mapping.forward_mapping
+    source_ids = set(available_file_ids)
     mapped_sound_ids = mapping.get_all_sound_ids()
-    available_ids = set(available_file_ids)
 
-    event_to_file_ids = []
+    event_to_file_ids: dict[str, list[int]] = {}
     for event_name in sorted(forward_mapping):
-        file_ids = sorted(set(forward_mapping[event_name]))
-        matched_ids = [file_id for file_id in file_ids if file_id in available_ids]
-        missing_ids = [file_id for file_id in file_ids if file_id not in available_ids]
-        event_to_file_ids.append(
-            {
-                "event_name": event_name,
-                "file_ids": file_ids,
-                "matched_file_ids": matched_ids,
-                "missing_file_ids": missing_ids,
-            }
+        hit_ids = sorted(
+            file_id for file_id in set(forward_mapping[event_name]) if file_id in source_ids
         )
+        if hit_ids:
+            event_to_file_ids[event_name] = hit_ids
 
     return {
         "input_event_count": len(event_names),
         "mapped_event_count": len(forward_mapping),
-        "available_file_ids": sorted(available_ids),
-        "mapped_sound_ids": sorted(mapped_sound_ids),
-        "unmapped_available_file_ids": sorted(available_ids - mapped_sound_ids),
-        "mapping_not_in_available_file_ids": sorted(mapped_sound_ids - available_ids),
+        "source_file_ids": sorted(source_ids),
         "event_to_file_ids": event_to_file_ids,
+        "unmatched_source_file_ids": sorted(source_ids - mapped_sound_ids),
     }
 
 
@@ -249,7 +241,6 @@ def _build_champion_chain_report(entry: dict) -> dict:
     vo_audio_wpk_wems = vo_audio_wpk.extract_files()
 
     sfx_audio_ids = {wem.id for wem in sfx_audio_wems if wem.id > 0}
-    vo_audio_bnk_ids = {wem.id for wem in vo_audio_bnk_wems if wem.id > 0}
     vo_audio_wpk_ids = {wem.id for wem in vo_audio_wpk_wems if wem.id > 0}
 
     sfx_event_names = _collect_bin_events_by_keyword(bin_obj, "sfx")
@@ -285,8 +276,6 @@ def _build_champion_chain_report(entry: dict) -> dict:
             "vo_event_to_file_ids": _build_event_mapping_report(
                 vo_event_names, vo_hirc, vo_audio_wpk_ids
             ),
-            "vo_audio_bnk_ids": sorted(vo_audio_bnk_ids),
-            "vo_audio_wpk_ids": sorted(vo_audio_wpk_ids),
         },
     }
 
