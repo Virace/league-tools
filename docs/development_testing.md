@@ -2,6 +2,35 @@
 
 本文面向项目开发者，目标是让“改完代码后做完整验证”可重复、可追溯。
 
+## 0. 开发环境（Windows / WSL）
+
+项目在 Windows 与 WSL 共享工作区时，不建议共用同一个虚拟环境，推荐分离：
+
+- Windows：`.venv-win`
+- WSL：`.venv-wsl`
+
+WSL 下推荐统一使用脚本入口：
+
+```bash
+./scripts/_uv.sh init
+./scripts/_uv.sh run pytest -q
+```
+
+该脚本会在项目内统一设置环境目录与缓存目录，默认使用：
+
+- `.venv-wsl`
+- `.cache/uv`（及 `.cache/`）
+- `.config/`
+- `.state/`
+
+兼容旧入口（等价于 `./scripts/_uv.sh init`）：
+
+```bash
+./scripts/setup_wsl_env.sh
+```
+
+> 说明：本文中历史命令若写为 `uv run ...`，在 WSL 环境建议等价替换为 `./scripts/_uv.sh run ...` 以统一环境与缓存目录。
+
 ## 1. 适用范围
 
 - 单元测试（纯逻辑/解析器行为）
