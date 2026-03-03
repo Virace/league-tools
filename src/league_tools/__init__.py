@@ -6,9 +6,10 @@
 # @Software: PyCharm
 # @Create  : 2021/3/4 18:44
 # @Update  : 2025/8/4 7:07
-# @Detail  : 
+# @Detail  :
 
 
+from .logging_control import disable_logging, enable_logging, is_logging_enabled
 from .formats.bin.parser import BIN
 from .formats.bnk.parser import BNK
 from .formats.bnk.wwiser import WwiserHIRC
@@ -27,4 +28,7 @@ __all__ = [
     "AudioEventMapper",
     "AudioMapping",
     "MappingAnalyzer",
+    "enable_logging",
+    "disable_logging",
+    "is_logging_enabled",
 ]

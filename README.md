@@ -99,6 +99,23 @@ WSL 下可直接运行：
 
 以下是如何使用本库解析四种核心文件格式的示例。
 
+#### 日志输出控制（默认关闭）
+
+本库默认关闭 `loguru` 输出，避免作为依赖库时污染上游项目日志。
+如需输出日志，请在上游项目中手动开启：
+
+```python
+from league_tools import enable_logging, disable_logging
+
+# 手动开启日志输出
+enable_logging()
+
+# ... 执行业务逻辑 ...
+
+# 可选：在不再需要日志时关闭
+disable_logging()
+```
+
 #### 解析 WPK 文件
 
 `WPK` 文件是一个音频包，通常包含多个 `.wem` 文件。
