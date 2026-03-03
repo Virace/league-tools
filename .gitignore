@@ -146,6 +146,7 @@ manual_tests/
 raw/
 data/
 .ai_memory/
+.CODING_STYLE.md
 tests/fixtures/**
 !tests/fixtures/
 !tests/fixtures/README.md
