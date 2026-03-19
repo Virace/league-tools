@@ -75,6 +75,10 @@ class WwiserBank:
         "sounds",  # 声音对象字典，id -> 声音对象
         "random_containers",  # 随机容器对象字典，id -> 随机容器对象
         "switch_containers",  # 切换容器对象字典，id -> 切换容器对象
+        "music_segments",  # 音乐段对象字典
+        "music_playlist_containers",  # 音乐播放列表对象字典
+        "music_switch_containers",  # 音乐切换对象字典
+        "music_tracks",  # 音乐轨道对象字典
     ]
 
     def __init__(
@@ -97,6 +101,10 @@ class WwiserBank:
         self.sounds = {}
         self.random_containers = {}
         self.switch_containers = {}
+        self.music_segments = {}
+        self.music_playlist_containers = {}
+        self.music_switch_containers = {}
+        self.music_tracks = {}
 
     def __repr__(self) -> str:
         """字符串表示"""
@@ -114,6 +122,10 @@ class WwiserBank:
             "sounds": len(self.sounds),
             "random_containers": len(self.random_containers),
             "switch_containers": len(self.switch_containers),
+            "music_segments": len(self.music_segments),
+            "music_playlist_containers": len(self.music_playlist_containers),
+            "music_switch_containers": len(self.music_switch_containers),
+            "music_tracks": len(self.music_tracks),
         }
 
 

@@ -10,6 +10,7 @@
 from league_tools import (
     BIN,
     BNK,
+    NativeHIRC,
     WPK,
     WAD,
     WwiserHIRC,
@@ -22,6 +23,8 @@ from league_tools import (
     is_logging_enabled,
 )
 ```
+
+音频事件映射默认推荐 `NativeHIRC`；如果你需要完整 XML/HIRC 结构或调试信息，再切到 `WwiserHIRC`。
 
 ## 2. 四种格式最小示例
 
@@ -71,5 +74,6 @@ disable_logging()
 - [BNK 解析](formats_bnk.md)
 - [WPK 解析](formats_wpk.md)
 - [音频映射机制](audio_mapping.md)
+- [音频 Bank 事件解释（开发）](audio_bank_parsing.md)
 - [开发测试说明](development_testing.md)
 - [发布维护流程](release_workflow.md)

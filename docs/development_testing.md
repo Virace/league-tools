@@ -17,12 +17,13 @@ uv run pytest -q
 
 - 单元测试（纯逻辑/解析器行为）
 - 联合测试（基于真实提取样本）
-- 完整链路测试（`WAD -> BIN -> BNK/WPK -> XML -> 事件映射 -> WEM`）
+- 完整链路测试（`WAD -> BIN -> events.bnk/audio.bnk/WPK -> 事件映射 -> WEM`）
 
 ## 2. 约束与前置条件
 
 - 真实链路测试依赖本地游戏目录（`Champions` 路径）。
-- 需要可用的 `wwiser.pyz`（脚本支持自动下载，也可手工指定）。
+- 默认 `NativeHIRC` 路径不依赖 `wwiser.pyz`。
+- 只有在你需要 `WwiserHIRC`、XML 对照或 fixture 生成 XML 时，才需要可用的 `wwiser.pyz`（脚本支持自动下载，也可手工指定）。
 
 目录约定（示例）：
 

@@ -12,6 +12,7 @@
 from .logging_control import disable_logging, enable_logging, is_logging_enabled
 from .formats.bin.parser import BIN
 from .formats.bnk.parser import BNK
+from .formats.bnk.native_hirc import NativeHIRC
 from .formats.bnk.wwiser import WwiserHIRC
 from .formats.wad.parser import WAD
 from .formats.wpk.parser import WPK
@@ -23,6 +24,7 @@ __all__ = [
     "BNK",
     "WPK",
     "WAD",
+    "NativeHIRC",
     "WwiserHIRC",
     "WwiserManager",
     "AudioEventMapper",

@@ -140,6 +140,7 @@ dmypy.json
 test.py
 /poetry.lock
 .cursor/
+.serena/
 
 manual_tests/
 *.pyz
@@ -147,6 +148,7 @@ raw/
 data/
 .ai_memory/
 .CODING_STYLE.md
+docs/todo/
 tests/fixtures/**
 !tests/fixtures/
 !tests/fixtures/README.md

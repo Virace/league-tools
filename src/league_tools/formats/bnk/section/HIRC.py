@@ -9,7 +9,7 @@
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 
 class HIRCType(IntEnum):
@@ -59,11 +59,11 @@ class Action:
     """
     object_id: int
     action_type: int
-    id_ext: int
-    switch_group_id: int
-    switch_state_id: int
-    state_group_id: int
-    target_state_id: int
+    id_ext: Optional[int]
+    switch_group_id: Optional[int]
+    switch_state_id: Optional[int]
+    state_group_id: Optional[int]
+    target_state_id: Optional[int]
 
 
 
@@ -87,7 +87,7 @@ class RanSeqCntr:
         child_ids: 子对象ID列表
     """
     object_id: int
-    direct_parent_id: int
+    direct_parent_id: Optional[int]
     child_ids: List[int]
 
 
@@ -102,7 +102,7 @@ class SwitchCntr:
         child_ids: 子对象ID列表
     """
     object_id: int
-    direct_parent_id: int
+    direct_parent_id: Optional[int]
     child_ids: List[int]
 
 
@@ -116,11 +116,14 @@ class MusicSegmentCntr:
         direct_parent_id: 直接父对象ID
         child_ids: 子对象ID列表
     
-    这个示例中没有这个类型
+    这个类型在原生 HIRC 中会继续递归 child_ids
     """
-    pass
+    object_id: int
+    direct_parent_id: Optional[int]
+    child_ids: List[int]
 
 
+@dataclass
 class MusicTrack:
     """
     音乐轨道类 0x0B [Music Track]
@@ -129,11 +132,13 @@ class MusicTrack:
         object_id: 对象ID
         source_id: 音频源ID
     
-    同上
+    file_ids 直接对应 wemId
     """
-    pass
+    object_id: int
+    file_ids: List[int]
 
 
+@dataclass
 class MusicSwitchCntr:
     """
     音乐切换容器类 0x0C [Music Switch]
@@ -142,11 +147,14 @@ class MusicSwitchCntr:
         object_id: 对象ID
         direct_parent_id: 直接父对象ID
         child_ids: 子对象ID列表
-    同上
+    这个类型在原生 HIRC 中会继续递归 child_ids
     """
-    pass
+    object_id: int
+    direct_parent_id: Optional[int]
+    child_ids: List[int]
 
 
+@dataclass
 class MusicRandomCntr:
     """
     音乐随机容器类 0x0D [Music Random/Sequence]
@@ -155,6 +163,8 @@ class MusicRandomCntr:
         object_id: 对象ID
         direct_parent_id: 直接父对象ID
         child_ids: 子对象ID列表
-    同上
+    这里对应 music playlist/random container
     """
-    pass
+    object_id: int
+    direct_parent_id: Optional[int]
+    child_ids: List[int]

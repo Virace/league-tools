@@ -16,6 +16,14 @@ WAD、BIN、BNK、WPK 文件处理工具库。
 - `BNK`（`.bnk`）：Wwise SoundBank 音频元数据
 - `WPK`（`.wpk`）：Wwise 打包音频文件
 
+音频事件映射默认推荐使用 `NativeHIRC`：
+
+- 只关注事件映射所需的 HIRC 音频信息
+- 直接从 `events.bnk` 读取，速度明显快于 `wwiser -> XML`
+- 更适合默认映射链和批量分析
+
+如果你需要更完整的 BNK/HIRC 结构、XML 对照能力或调试信息，再使用 `WwiserHIRC`。
+
 ## 安装
 
 ```bash
@@ -35,7 +43,7 @@ pip install -e "git+https://github.com/Virace/league-tools@package#egg=league_to
 ```python
 from pathlib import Path
 
-from league_tools import BIN, BNK, WAD, WPK
+from league_tools import BIN, BNK, NativeHIRC, WAD, WPK
 
 # 1) WPK：提取音频文件
 wpk = WPK("path/to/audio.wpk")
@@ -55,6 +63,9 @@ wad.extract(
 # 4) BIN：读取音频事件组数据
 bin_file = BIN("path/to/skin.bin")
 audio_groups = bin_file.data
+
+# 5) NativeHIRC：默认推荐的 events.bnk 解析入口
+hirc = NativeHIRC.from_bnk("path/to/vo_events.bnk")
 ```
 
 日志默认关闭；上游项目可按需手动开启：
@@ -76,6 +87,25 @@ disable_logging()
 - [BNK 解析](docs/formats_bnk.md)
 - [WPK 解析](docs/formats_wpk.md)
 - [音频映射](docs/audio_mapping.md)
+- [音频 Bank 事件解释（开发）](docs/audio_bank_parsing.md)
+
+## 音频映射建议
+
+默认工作流：
+
+```python
+from league_tools import AudioEventMapper, BIN, NativeHIRC
+
+bin_file = BIN("path/to/skin.bin")
+hirc = NativeHIRC.from_bnk("path/to/events.bnk")
+mapping = AudioEventMapper(bin_file, hirc).build_mapping()
+```
+
+何时切到 `WwiserHIRC`：
+
+- 需要完整 XML / HIRC 结构对照
+- 需要调试 `wwiser` 输出或排查版本差异
+- 需要的信息超出 `NativeHIRC` 当前只关注的音频事件映射范围
 
 ## 参考
 

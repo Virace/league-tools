@@ -4,6 +4,8 @@
 
 快速上手与顶层 API 请先看：[API 基础用法](api_basics.md)
 
+如果你在做音频事件映射开发，还可以配合阅读：[音频事件映射机制](audio_mapping.md) 和 [音频 Bank 事件解释（开发）](audio_bank_parsing.md)。
+
 ## 支持的文件格式
 
 ### 1. [BIN文件格式](formats_bin.md) 
@@ -12,7 +14,7 @@
 - 存储语音触发事件映射关系
 - 支持皮肤文件和非皮肤文件
 - 包含音乐配置信息
-- 基于FNV-1a哈希的事件索引
+- 基于项目内事件哈希的索引
 
 **主要数据结构**:
 - `StringHash` - 事件名称和哈希值对
@@ -34,6 +36,7 @@
 
 **主要组件**:
 - `BNK` - 基础BNK文件解析器
+- `NativeHIRC` - 默认推荐的原生 HIRC 音频映射解析器
 - `WwiserHIRC` - 高级HIRC解析器
 - `Sound/Event/Action` - 音频对象类型
 - `WemFile` - 音频文件容器
@@ -80,7 +83,7 @@
 
 | 格式 | 主要用途 | 复杂度 | 压缩支持 | 特殊特性 |
 |------|----------|--------|----------|----------|
-| BIN  | 音频事件映射 | 中等 | 无 | FNV哈希索引、事件分类 |
+| BIN  | 音频事件映射 | 中等 | 无 | 事件哈希索引、事件分类 |
 | BNK  | 音频资源库 | 高 | 内嵌 | 层次结构、事件系统 |
 | WAD  | 通用资源存档 | 高 | 多种 | 子块分割、版本演进 |
 | WPK  | 音频文件封装 | 低 | 无 | UTF-16文件名、专注音频 |
@@ -89,8 +92,10 @@
 
 ### 音频分析工作流
 1. **BIN文件** → 获取事件名称和分类信息
-2. **BNK文件** → 解析音频层次结构和获取WEM文件
+2. **BNK文件** → 默认优先 `NativeHIRC` 解析事件映射所需的 HIRC 音频信息
 3. **音频映射** → 使用`AudioEventMapper`构建事件-音频映射关系
+
+如果需要更完整的 BNK/HIRC 结构、XML 对照或 wwiser 调试能力，再切到 `WwiserHIRC`。
 
 ### 资源提取工作流  
 1. **WAD文件** → 提取游戏中的各类资源文件
@@ -100,17 +105,14 @@
 ### 开发集成
 ```python
 # 典型的音频处理流程
-from league_tools.formats import BIN, BNK, WAD, WPK
-from league_tools.formats.bnk import WwiserHIRC
+from league_tools.formats import BIN, BNK, NativeHIRC, WAD, WPK
 from league_tools.tools import AudioEventMapper
-from league_tools.utils.wwiser import WwiserManager
 
 # 1. 解析BIN文件获取事件信息
 bin_file = BIN('annie_base.bin')
 
-# 2. 解析BNK文件获取音频结构
-wm = WwiserManager()
-hirc = WwiserHIRC.from_bnk('annie_base_vo_events.bnk', wwiser_manager=wm)
+# 2. 默认推荐：直接解析 events.bnk 的音频事件结构
+hirc = NativeHIRC.from_bnk('annie_base_vo_events.bnk')
 
 # 3. 构建事件-音频映射
 mapper = AudioEventMapper(bin_file, hirc)
@@ -150,7 +152,7 @@ except Exception as e:
 ## 性能考虑
 
 1. **大文件处理**: 所有解析器都支持流式处理以减少内存占用
-2. **缓存机制**: BNK/WwiserHIRC支持两级缓存提高重复解析性能
+2. **解析路径选择**: 映射主链优先 `NativeHIRC`；需要完整结构或 XML 对照时使用 `WwiserHIRC`
 3. **并发处理**: 支持多线程批量处理多个文件
 4. **内存管理**: 提供资源清理接口避免内存泄漏
 

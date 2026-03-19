@@ -2,7 +2,12 @@
 
 ## 概述
 
-BNK（Bank）文件是Wwise音频引擎使用的音频资源文件格式，包含了音频数据、音频层次结构（HIRC）和相关元数据。在英雄联盟中，BNK文件存储了游戏的音频文件和事件映射关系。
+BNK（Bank）文件是 Wwise 音频引擎使用的音频资源文件格式，包含了音频数据、音频层次结构（HIRC）和相关元数据。在英雄联盟中，BNK 文件存储了游戏的音频文件和事件映射关系。
+
+本仓当前有两条 HIRC 路径：
+
+- `NativeHIRC`：默认推荐，只关注音频事件映射所需的 HIRC 信息，直接从 `events.bnk` 读取，速度更快
+- `WwiserHIRC`：需要完整 XML / HIRC 结构、wwiser 对照或调试时再使用
 
 ## 文件结构
 
@@ -17,10 +22,12 @@ BNK文件
 ```
 
 ### 数据流程
+```text
+.bnk文件 → NativeHIRC → 音频事件映射
+        ↘ wwiser.pyz → XML文件 → WwiserHIRC（完整结构 / 调试）
 ```
-.bnk文件 → wwiser.pyz → XML文件 → WwiserHIRC对象 → 音频事件映射
-```
-没有重写BNK模块，而是只处理DATA与DIDX两个部分，仅供解包文件，而HIRC区块交给 wwiser.pyz
+
+`BNK` 本体仍然只处理 `BKHD / DIDX / DATA`，主要负责解包与提取内嵌 WEM；事件映射场景下默认优先 `NativeHIRC`。
 
 ## 核心组件
 
@@ -42,8 +49,25 @@ class BNK(SectionNoId):
     is_compatible: bool      # 版本兼容性
 ```
 
-### 2. WwiserHIRC解析器
-基于wwiser工具的高级解析器：
+### 2. NativeHIRC 解析器
+默认推荐的原生音频映射解析器：
+
+```python
+class NativeHIRC:
+    """
+    直接从 events.bnk 读取音频事件映射所需的 HIRC 信息
+    不追求完整 BNK/HIRC 结构，只关注音频相关对象
+    """
+```
+
+适用场景：
+
+- 默认音频映射主链
+- 批量事件分析
+- 对性能敏感的真实样本处理
+
+### 3. WwiserHIRC解析器
+基于 wwiser 工具的高级解析器：
 
 ```python
 class WwiserHIRC:
@@ -175,7 +199,20 @@ except BNKFormatError as e:
     print(f"文件格式错误: {e}")
 ```
 
-### 使用WwiserHIRC解析
+### 使用 NativeHIRC 解析（默认推荐）
+```python
+from league_tools import NativeHIRC
+
+hirc = NativeHIRC.from_bnk('events.bnk')
+```
+
+说明：
+
+- `NativeHIRC` 只解析音频事件映射所需的 HIRC 音频信息
+- 它不是完整 BNK 解析器，也不输出 wwiser 的完整 XML 结构
+- 如果你只想做 `event -> wemId[]` 映射，优先使用它
+
+### 使用 WwiserHIRC 解析
 ```python
 from league_tools.formats.bnk import WwiserHIRC
 from league_tools.utils.wwiser import WwiserManager
@@ -249,12 +286,10 @@ if bank:
 ### 构建音频映射
 ```python
 from league_tools.tools import AudioEventMapper
-
-# 方式1: 配合BIN文件
-from league_tools.formats.bin import BIN
+from league_tools import BIN, NativeHIRC
 
 bin_file = BIN('annie_base.bin')
-hirc = WwiserHIRC.from_bnk('annie_base_vo_events.bnk', wwiser_manager=wm)
+hirc = NativeHIRC.from_bnk('annie_base_vo_events.bnk')
 
 mapper = AudioEventMapper(bin_file, hirc)
 mapping = mapper.build_mapping()
