@@ -2,7 +2,15 @@
 
 ## 概述
 
-音频事件映射是将BIN文件中的事件名称（如`Play_vo_Aurora_Move1`）映射到BNK文件中具体音频文件ID的过程。这个映射通过Wwise的层级容器结构实现。
+音频事件映射是将 BIN 文件中的事件名称（如 `Play_vo_Aurora_Move1`）映射到 BNK/WPK 中具体音频文件 ID 的过程。这个映射通过 Wwise 的层级容器结构实现。
+
+默认推荐使用 `NativeHIRC` 作为 HIRC 来源：
+
+- 直接从 `events.bnk` 读取音频映射所需信息
+- 不依赖 `wwiser -> XML`
+- 更适合批量映射和真实样本分析
+
+如果需要更完整的 BNK/HIRC 结构或 XML 对照，再切到 `WwiserHIRC`。
 
 新版本采用了模块化设计，将功能分为三个核心类：
 - **AudioMapping**: 数据存储和查询
@@ -22,7 +30,7 @@
 ```
 StringHash对象
 ├── string: "Play_vo_Aurora_Move1"  (事件名称)
-└── hash: 123456789                (事件名称的FNV-1a哈希)
+└── hash: 123456789                (与项目实现一致的 32-bit 事件哈希)
 ```
 
 ### 2. 查找Event对象
@@ -105,7 +113,7 @@ class AudioMapping:
 #### 2. AudioEventMapper 映射器
 ```python
 class AudioEventMapper:
-    def __init__(self, events_input: Union[BIN, List[str]], hirc: WwiserHIRC)
+    def __init__(self, events_input: Union[BIN, List[str]], hirc)
     def build_mapping(self) -> AudioMapping
 ```
 
@@ -190,15 +198,13 @@ Event → Action → SwitchContainer → RandomContainer → Sound
 
 ## 使用示例
 
-### 方式1: 使用BIN文件（向后兼容）
+### 方式1: 默认推荐，使用 NativeHIRC
 ```python
-from league_tools import BIN, WwiserHIRC, AudioEventMapper, MappingAnalyzer
-from league_tools.utils.wwiser import WwiserManager
+from league_tools import BIN, NativeHIRC, AudioEventMapper, MappingAnalyzer
 
 # 加载文件
 bin_file = BIN('skin0.bin')
-wm = WwiserManager()
-hirc = WwiserHIRC.from_bnk('events.bnk', wwiser_manager=wm)
+hirc = NativeHIRC.from_bnk('events.bnk')
 
 # 创建映射器并构建映射
 mapper = AudioEventMapper(bin_file, hirc)
@@ -228,17 +234,28 @@ mapping = mapper.build_mapping()
 print(f"成功处理了 {len(mapping.get_all_event_names())} 个事件")
 ```
 
+### 方式3: 需要完整 XML/HIRC 结构时使用 WwiserHIRC
+```python
+from league_tools import BIN, WwiserHIRC, AudioEventMapper
+from league_tools.utils.wwiser import WwiserManager
+
+bin_file = BIN('skin0.bin')
+wm = WwiserManager()
+hirc = WwiserHIRC.from_bnk('events.bnk', wwiser_manager=wm)
+mapping = AudioEventMapper(bin_file, hirc).build_mapping()
+```
+
 ### 合并多个映射（处理多category）
 ```python
 # 处理VO事件
 vo_events = ["Play_vo_Annie_Move1", "Play_vo_Annie_Attack1"]
-hirc_vo = WwiserHIRC.from_bnk('annie_base_vo.bnk', wwiser_manager=wm)
+hirc_vo = NativeHIRC.from_bnk('annie_base_vo_events.bnk')
 mapper_vo = AudioEventMapper(vo_events, hirc_vo)
 mapping_vo = mapper_vo.build_mapping()
 
 # 处理SFX事件
 sfx_events = ["Play_sfx_Annie_Q", "Play_sfx_Annie_W"]
-hirc_sfx = WwiserHIRC.from_bnk('annie_base_sfx.bnk', wwiser_manager=wm)
+hirc_sfx = NativeHIRC.from_bnk('annie_base_sfx_events.bnk')
 mapper_sfx = AudioEventMapper(sfx_events, hirc_sfx)
 mapping_sfx = mapper_sfx.build_mapping()
 
@@ -292,7 +309,7 @@ print(f"平均每事件音频数: {stats['avg_sounds_per_event']}")
 
 ### 🎯 灵活输入支持
 - **BIN文件模式**: 自动遍历 `data → bank_units → events` 提取所有事件
-- **字符串数组模式**: 直接传入事件名称列表，自动计算FNV-1a哈希
+- **字符串数组模式**: 直接传入事件名称列表，自动计算项目当前事件哈希
 - **向后兼容**: 现有代码无需修改
 
 ### 🔄 映射合并功能
@@ -313,6 +330,11 @@ print(f"平均每事件音频数: {stats['avg_sounds_per_event']}")
 - **BFS遍历**: 避免递归调用，处理复杂嵌套结构
 - **内存友好**: 使用集合和队列，空间复杂度O(n)
 - **容错性强**: 单个事件错误不影响整体处理
+
+## 相关文档
+
+- [BNK 解析](formats_bnk.md)
+- [音频 Bank 事件解释（开发）](audio_bank_parsing.md)
 
 ## API 设计原则
 

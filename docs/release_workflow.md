@@ -36,7 +36,7 @@ git pull --ff-only origin test
 ### 3.2 开发与验证
 
 ```bash
-./scripts/_uv.sh run pytest -q
+uv run pytest -q
 ```
 
 涉及真实样本链路时，按 `docs/development_testing.md` 执行完整链路测试。
@@ -76,7 +76,7 @@ git pull --ff-only origin test
 git status --short
 git diff --cached --name-only
 git fetch --all --prune
-./scripts/_uv.sh run pytest -q
+uv run pytest -q
 ```
 
 检查版本号（必须是正式要发布的版本）：
@@ -146,7 +146,7 @@ git push origin vX.Y.Z
 1. 在 CI 中构建 `dist/*`（`python -m build`）
 2. 通过 Trusted Publishing 上传到 PyPI
 
-> 说明：`./scripts/_uv.sh` 仅用于本地 WSL 环境，CI 不依赖该脚本。
+> 说明：本地与 CI 均使用原生 `uv`。
 
 ## 6. Trusted Publishing 配置清单（PyPI 侧）
 
@@ -178,7 +178,7 @@ rg -n '^version = ' pyproject.toml
 git fetch --all --prune
 
 # 最小回归
-./scripts/_uv.sh run pytest -q
+uv run pytest -q
 
 # 合并发布
 git switch package

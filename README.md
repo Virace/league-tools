@@ -1,284 +1,129 @@
 # league-tools
 
-WAD、BIN、BNK、WPK文件简单处理
+[![PyPI 版本](https://img.shields.io/pypi/v/league-tools.svg)](https://pypi.org/project/league-tools/)
+[![Python 版本](https://img.shields.io/pypi/pyversions/league-tools.svg)](https://pypi.org/project/league-tools/)
+[![许可证](https://img.shields.io/pypi/l/league-tools.svg)](LICENSE)
+[![发布流程](https://github.com/Virace/league-tools/actions/workflows/python-publish.yml/badge.svg)](https://github.com/Virace/league-tools/actions/workflows/python-publish.yml)
 
-- [介绍](#介绍)
-- [安装](#安装)
-- [开发环境（Windows / WSL）](#开发环境windows--wsl)
-- [维护与发布流程](#维护与发布流程)
-- [使用](#使用)
-  - [解析 WPK 文件](#解析-wpk-文件)
-  - [解析 BNK 文件](#解析-bnk-文件)
-  - [解析 WAD 文件](#解析-wad-文件)
-  - [解析 BIN 文件](#解析-bin-文件)
-- [参考](#参考)
-- [维护者](#维护者)
-- [感谢](#感谢)
-- [许可证](#许可证)
+WAD、BIN、BNK、WPK 文件处理工具库。
 
-### 介绍
-一个用于处理英雄联盟（League of Legends）数据文件的 Python 库，提供对 `WAD`、`BIN`、`BNK` 和 `WPK` 格式文件的底层解析功能。
+## 介绍
 
-- WAD (`.wad.client`): 游戏资源包，包含游戏中的模型、贴图、音频等各种资源。
-- BIN (`.bin`): 游戏内的数据文件，用于定义英雄、皮肤、技能等的属性和逻辑。
-- BNK (`.bnk`): Wwise SoundBank 格式，包含音频元数据和事件信息。
-- WPK (`.wpk`): Wwise Packed File，通常用于打包多个 `.wem` 音频文件。
+`league-tools` 是一个用于处理英雄联盟资源文件的 Python 库，提供对以下格式的底层解析能力：
 
-本库专注于提供稳定、独立的解析器，方便开发者进行二次开发。
+- `WAD`（`.wad.client`）：资源包（模型、贴图、音频等）
+- `BIN`（`.bin`）：游戏配置与逻辑数据
+- `BNK`（`.bnk`）：Wwise SoundBank 音频元数据
+- `WPK`（`.wpk`）：Wwise 打包音频文件
 
-### 安装
+音频事件映射默认推荐使用 `NativeHIRC`：
 
-`pip install league-tools`
+- 只关注事件映射所需的 HIRC 音频信息
+- 直接从 `events.bnk` 读取，速度明显快于 `wwiser -> XML`
+- 更适合默认映射链和批量分析
 
-`pip install -e git+https://github.com/Virace/py-bnk-extract@package#egg=league_tools`
+如果你需要更完整的 BNK/HIRC 结构、XML 对照能力或调试信息，再使用 `WwiserHIRC`。
 
-### 开发环境（Windows / WSL）
-
-项目在 Windows 与 WSL 共享工作区时，请不要共用同一个 `.venv`，建议按平台分离：
-
-- Windows: `.venv-win`
-- WSL: `.venv-wsl`
-
-WSL 下可直接运行：
+## 安装
 
 ```bash
-./scripts/_uv.sh init
-./scripts/_uv.sh run pytest -q
+pip install league-tools
 ```
 
-该脚本会统一设置项目内环境目录并调用 `uv`，默认使用：
-
-- `.venv-wsl`
-- `.cache/uv`（以及 `.cache/`）
-- `.config/`
-- `.state/`
-
-兼容旧入口（等价于 `./scripts/_uv.sh init`）：
+如需基于发布分支安装最新代码：
 
 ```bash
-./scripts/setup_wsl_env.sh
+pip install -e "git+https://github.com/Virace/league-tools@package#egg=league_tools"
 ```
 
-另外，仓库中的自动化测试应放在 `tests/` 并遵循 `pytest` 规范；手动调试脚本请放到 `manual_tests/`（该目录默认不提交）。
+## 使用
 
-### 维护与发布流程
+基础使用示例（四种核心格式）：
 
-维护期的开发、分支切换、构建与发布流程详见：
+```python
+from pathlib import Path
 
-- [`docs/release_workflow.md`](docs/release_workflow.md)
+from league_tools import BIN, BNK, NativeHIRC, WAD, WPK
 
-#### 测试样本准备（WAD 自动提取）
+# 1) WPK：提取音频文件
+wpk = WPK("path/to/audio.wpk")
+wem_files = wpk.extract_files()
 
-可在运行测试前，自动从本地游戏目录提取样本：
+# 2) BNK：提取内嵌WEM
+bnk = BNK("path/to/events.bnk")
+bnk_wem_files = bnk.extract_files()
 
-```bash
-./scripts/_uv.sh run python scripts/extract_wad_fixtures.py \
-  --game-root "/mnt/d/Games/Tencent/WeGameApps/英雄联盟/Game/DATA/FINAL/Champions" \
-  --locale zh_CN \
-  --sample-size 5 \
-  --skin 1 \
-  --output tests/fixtures/external
+# 3) WAD：按已知路径提取文件
+wad = WAD("path/to/archive.wad.client")
+wad.extract(
+    ["assets/sounds/vo/champions/gwen/skin01/vo_gwen_skin01_events.bnk"],
+    out_dir=Path("./wad_output"),
+)
+
+# 4) BIN：读取音频事件组数据
+bin_file = BIN("path/to/skin.bin")
+audio_groups = bin_file.data
+
+# 5) NativeHIRC：默认推荐的 events.bnk 解析入口
+hirc = NativeHIRC.from_bnk("path/to/vo_events.bnk")
 ```
 
-说明：
-
-- 默认使用脚本内置英雄池（`--champion-source hardcoded`）并按顺序抽样，保证稳定。
-- 如需从 CommunityDragon 最新列表获取候选英雄，可加 `--champion-source communitydragon`。
-- 需要随机化时显式加 `--shuffle`（可配合 `--seed` 复现）。
-
-也可让 pytest 在会话开始前自动执行提取：
-
-```bash
-./scripts/_uv.sh run pytest -q \
-  --prepare-fixtures \
-  --fixture-game-root "/mnt/d/Games/Tencent/WeGameApps/英雄联盟/Game/DATA/FINAL/Champions" \
-  --fixture-sample-size 5
-```
-
-### 使用
-
-以下是如何使用本库解析四种核心文件格式的示例。
-
-#### 日志输出控制（默认关闭）
-
-本库默认关闭 `loguru` 输出，避免作为依赖库时污染上游项目日志。
-如需输出日志，请在上游项目中手动开启：
+日志默认关闭；上游项目可按需手动开启：
 
 ```python
 from league_tools import enable_logging, disable_logging
 
-# 手动开启日志输出
 enable_logging()
-
-# ... 执行业务逻辑 ...
-
-# 可选：在不再需要日志时关闭
+# ... 业务逻辑 ...
 disable_logging()
 ```
 
-#### 解析 WPK 文件
+详细示例与格式文档：
 
-`WPK` 文件是一个音频包，通常包含多个 `.wem` 文件。
+- [基础 API 与快速上手](docs/api_basics.md)
+- [格式总览](docs/formats_overview.md)
+- [WAD 解析](docs/formats_wad.md)
+- [BIN 解析](docs/formats_bin.md)
+- [BNK 解析](docs/formats_bnk.md)
+- [WPK 解析](docs/formats_wpk.md)
+- [音频映射](docs/audio_mapping.md)
+- [音频 Bank 事件解释（开发）](docs/audio_bank_parsing.md)
 
-```python
-from pathlib import Path
-from league_tools.formats.wpk.parser import WPK
+## 音频映射建议
 
-# 初始化WPK解析器
-wpk_file = WPK('path/to/your/audio.wpk')
-
-# 提取所有包含完整数据的音频文件
-# extract_files() 返回一个 WemFile 对象的列表
-wem_files = wpk_file.extract_files()
-
-# 创建输出目录
-output_dir = Path('./wpk_output')
-output_dir.mkdir(exist_ok=True)
-
-# 遍历并保存文件
-for wem in wem_files:
-    # WemFile.id 是从文件名解析出的数字ID
-    # WemFile.data 包含了文件的二进制数据
-    print(f"提取文件: ID={wem.id}, 大小={wem.length}字节")
-    
-    # 定义输出路径
-    output_path = output_dir / f"{wem.id}.wem"
-    
-    # WemFile对象提供了save_file方法，可以直接保存
-    if wem.data:
-        try:
-            wem.save_file(output_path)
-        except Exception as e:
-            print(f"保存文件 {wem.id}.wem 失败: {e}")
-```
-
-#### 解析 BNK 文件
-
-`BNK` 文件是 Wwise SoundBank，它包含音频文件的索引（DIDX）和数据（DATA）。本库的 `BNK` 解析器会自动处理这两部分，并提供统一的接口。
+默认工作流：
 
 ```python
-from pathlib import Path
-from league_tools.formats.bnk.parser import BNK
+from league_tools import AudioEventMapper, BIN, NativeHIRC
 
-# 初始化BNK解析器
-bnk_file = BNK('path/to/your/audio.bnk')
-
-# 检查BNK文件版本是否受支持
-if not bnk_file.is_version_supported():
-    print(f"警告: 不支持的BNK版本 {bnk_file.get_soundbank_version()}")
-
-# 提取所有音频文件
-# 如果BNK文件包含DATA区块，返回的WemFile对象将包含完整的二进制数据
-wem_files = bnk_file.extract_files()
-
-# 创建输出目录
-output_dir = Path('./bnk_output')
-output_dir.mkdir(exist_ok=True)
-
-# 遍历并保存文件
-for wem in wem_files:
-    print(f"提取文件: ID={wem.id}, 大小={wem.length}字节")
-    
-    # 定义输出路径
-    output_path = output_dir / f"{wem.id}.wem"
-    
-    # BNK解析器已经将数据填充到wem.data属性中
-    # 可以直接使用 WemFile 内置的保存方法
-    if wem.data:
-        try:
-            wem.save_file(output_path)
-        except Exception as e:
-            print(f"保存文件 {wem.id}.wem 失败: {e}")
+bin_file = BIN("path/to/skin.bin")
+hirc = NativeHIRC.from_bnk("path/to/events.bnk")
+mapping = AudioEventMapper(bin_file, hirc).build_mapping()
 ```
 
-#### 解析 WAD 文件
+何时切到 `WwiserHIRC`：
 
-`WAD` 文件是主要的游戏资源存档。你可以根据文件路径来提取其中的文件。
+- 需要完整 XML / HIRC 结构对照
+- 需要调试 `wwiser` 输出或排查版本差异
+- 需要的信息超出 `NativeHIRC` 当前只关注的音频事件映射范围
 
-```python
-from pathlib import Path
-from league_tools.formats.wad.parser import WAD
+## 参考
 
-# 初始化WAD解析器
-wad_file = WAD('path/to/your/archive.wad.client')
+- WPK 参考 [Morilli/bnk-extract](https://github.com/Morilli/bnk-extract)
+- WAD 结构与部分逻辑来源于 [CommunityDragon/CDTB](https://github.com/CommunityDragon/CDTB) 与 [Pupix/lol-file-parser](https://github.com/Pupix/lol-file-parser)
+- BNK 结构参考 [Xentax Wiki](http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk))
 
-# 查看WAD文件中的部分文件信息
-# WAD.files 是一个 WADSection 对象的列表
-print(f"WAD文件包含 {len(wad_file.files)} 个文件。")
-for file_entry in wad_file.files[:5]:
-    # WADSection.path_hash 是文件的路径哈希
-    print(f" - 文件哈希: {file_entry.path_hash:x}, 大小: {file_entry.size}")
+## 维护
 
-# 创建输出目录
-output_dir = Path('./wad_output')
-output_dir.mkdir(exist_ok=True)
+- 维护者：**Virace**（[孤独的未知数](https://x-item.com)）
+- 开发与测试标准：[docs/development_testing.md](docs/development_testing.md)
+- 发布与维护流程：[docs/release_workflow.md](docs/release_workflow.md)
+- 许可证：[GPLv3](LICENSE)
 
-# 提取单个已知路径的文件
-# 注意: WAD内部不存储完整路径，需要提供路径来进行哈希匹配
-target_file_path = 'assets/sounds/vo/champions/gwen/skin01/vo_gwen_skin01_events.bnk'
+## 感谢
 
-# 直接提取到目录
-wad_file.extract([target_file_path], out_dir=output_dir)
-print(f"尝试提取文件到: {output_dir / Path(target_file_path).name}")
-```
-
-#### 解析 BIN 文件
-
-`BIN` 文件通常用于定义游戏对象的属性，例如英雄皮肤的音频事件。
-
-```python
-from league_tools.formats.bin.parser import BIN
-
-# 初始化BIN解析器
-bin_file = BIN('path/to/your/skin.bin')
-
-# 检查是否为皮肤文件
-if not bin_file.is_skin:
-    print("这是一个通用的BIN文件，而非皮肤文件。")
-
-# 遍历文件中的音频组 (AudioGroup)
-# 每个AudioGroup包含一个或多个BankUnit
-for i, audio_group in enumerate(bin_file.data):
-    print(f"--- 音频组 #{i + 1} ---")
-
-    # 遍历BankUnit (通常按类别划分，如Attack, Spell, Emote)
-    for unit in audio_group.bank_units:
-        print(f"  类别: {unit.category}")
-        print(f"  关联的Bank文件: {unit.bank_path}")
-
-        # 打印此类别下的所有音频事件
-        for event in unit.events:
-            # event.string 是事件名称, e.g., "Play_vo_Gwen_Skin01_Attack2D_3"
-            # event.hash 是事件名称的FNV-1a 32位哈希
-            print(f"    - 事件: {event.string} (哈希: {event.hash:x})")
-
-    # 如果音频组有关联的音乐数据
-    if audio_group.music:
-        print("  关联音乐数据:")
-        print(f"    - 胜利音乐: {audio_group.music.victory_music_id}")
-        print(f"    - 失败音乐: {audio_group.music.defeat_music_id}")
-```
-
-### 参考
-感谢前人栽树
-- WPK参考 [Morilli](https://github.com/Morilli) 编写的解包工具 [bnk-extract](https://github.com/Morilli/bnk-extract)。
-- WAD 文件结构及部分逻辑来源于 [CommunityDragon/CDTB](https://github.com/CommunityDragon/CDTB) 和 [Pupix/lol-file-parser](https://github.com/Pupix/lol-file-parser)。
-- BNK 文件结构参考自 [Xentax Wiki](http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk))。
-
-### 维护者
-**Virace**
-- blog: [孤独的未知数](https://x-item.com)
-
-### 感谢
-- [@Morilli](https://github.com/Morilli/bnk-extract), **bnk-extract**
-- [@Pupix](https://github.com/Pupix/lol-file-parser), **lol-file-parser**
-- [@CommunityDragon](https://github.com/CommunityDragon/CDTB), **CDTB** 
-- [@vgmstream](https://github.com/vgmstream/vgmstream), **vgmstream**
-
-- 以及**JetBrains**提供开发环境支持
-  
-  <a href="https://www.jetbrains.com/?from=kratos-pe" target="_blank"><img src="https://cdn.jsdelivr.net/gh/virace/kratos-pe@main/jetbrains.svg"></a>
-
-### 许可证
-
-[GPLv3](LICENSE)
+- [@Morilli](https://github.com/Morilli/bnk-extract)（bnk-extract）
+- [@Pupix](https://github.com/Pupix/lol-file-parser)（lol-file-parser）
+- [@CommunityDragon](https://github.com/CommunityDragon/CDTB)（CDTB）
+- [@vgmstream](https://github.com/vgmstream/vgmstream)（vgmstream）
+- JetBrains 提供开发环境支持

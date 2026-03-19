@@ -18,10 +18,30 @@
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Mapping, Optional, Protocol, Set, Union
 
-from ..formats import BIN, WwiserHIRC
+from ..formats import BIN
 from ..utils.hash import str_fnv_32
+
+
+class HIRCBankLike(Protocol):
+    """AudioEventMapper 依赖的最小 bank 接口。"""
+
+    events: Mapping[int, object]
+    event_actions: Mapping[int, object]
+    sounds: Mapping[int, object]
+    random_containers: Mapping[int, object]
+    switch_containers: Mapping[int, object]
+    music_segments: Mapping[int, object]
+    music_playlist_containers: Mapping[int, object]
+    music_switch_containers: Mapping[int, object]
+    music_tracks: Mapping[int, object]
+
+
+class HIRCLike(Protocol):
+    """AudioEventMapper 依赖的最小 HIRC 接口。"""
+
+    banks: Mapping[str, HIRCBankLike]
 
 
 @dataclass
@@ -255,16 +275,14 @@ class AudioEventMapper:
     """
     音频事件映射器
 
-    职责：从事件输入源和WwiserHIRC文件构建AudioMapping实例。
+    职责：从事件输入源和 HIRC 兼容对象构建 AudioMapping 实例。
     支持两种灵活的输入方式：BIN文件或事件名称字符串列表。
 
     Example:
-        >>> from league_tools import BIN, WwiserHIRC
-        >>> from league_tools.utils.wwiser import WwiserManager
+        >>> from league_tools import BIN, NativeHIRC
         >>> from league_tools.tools import AudioEventMapper, MappingAnalyzer
         >>>
-        >>> wm = WwiserManager()
-        >>> hirc = WwiserHIRC.from_bnk('events.bnk', wwiser_manager=wm)
+        >>> hirc = NativeHIRC.from_bnk('events.bnk')
         >>>
         >>> # 方式1：使用BIN文件（向后兼容）
         >>> bin_file = BIN('skin0.bin')
@@ -288,14 +306,14 @@ class AudioEventMapper:
         >>> coverage = analyzer.analyze_file_coverage(['123456', '789012'])
     """
 
-    def __init__(self, events_input: Union[BIN, List[str]], hirc: WwiserHIRC):
+    def __init__(self, events_input: Union[BIN, List[str]], hirc: HIRCLike):
         """
         初始化音频事件映射器
 
         :param events_input: 事件输入源，支持两种类型：
                             - BIN文件对象：从中提取StringHash
                             - 字符串列表：事件名称列表，会自动计算hash
-        :param hirc: 已解析的WwiserHIRC对象
+        :param hirc: 已解析的 HIRC 对象，支持 wwiser/native 两种来源
         """
         self.events_input = events_input
         self.hirc = hirc
@@ -392,6 +410,26 @@ class AudioEventMapper:
             for container_id, container_obj in bank.switch_containers.items():
                 unified_index[container_id] = ("switch_container", container_obj)
 
+            # 索引音乐段对象
+            for container_id, container_obj in getattr(bank, "music_segments", {}).items():
+                unified_index[container_id] = ("music_segment", container_obj)
+
+            # 索引音乐播放列表对象
+            for container_id, container_obj in getattr(
+                bank, "music_playlist_containers", {}
+            ).items():
+                unified_index[container_id] = ("music_playlist_container", container_obj)
+
+            # 索引音乐切换对象
+            for container_id, container_obj in getattr(
+                bank, "music_switch_containers", {}
+            ).items():
+                unified_index[container_id] = ("music_switch_container", container_obj)
+
+            # 索引音乐轨道对象
+            for track_id, track_obj in getattr(bank, "music_tracks", {}).items():
+                unified_index[track_id] = ("music_track", track_obj)
+
         return unified_index
 
     def _find_sound_ids_for_event(self, event_id: int) -> List[int]:
@@ -435,10 +473,20 @@ class AudioEventMapper:
                 if hasattr(obj, "source_id") and obj.source_id != 0:
                     sound_ids.append(obj.source_id)
 
-            elif obj_type in ("random_container", "switch_container"):
+            elif obj_type in (
+                "random_container",
+                "switch_container",
+                "music_segment",
+                "music_playlist_container",
+                "music_switch_container",
+            ):
                 # 容器对象：将所有子ID加入队列
                 if hasattr(obj, "child_ids"):
                     queue.extend(obj.child_ids)
+
+            elif obj_type == "music_track":
+                file_ids = getattr(obj, "file_ids", [])
+                sound_ids.extend(file_id for file_id in file_ids if file_id != 0)
 
         return sorted(list(set(sound_ids)))  # 去重并排序
 

@@ -10,6 +10,7 @@
 from league_tools.formats.bin.parser import BIN
 from league_tools.formats.bin.models import StringHash
 from league_tools.formats.bnk.parser import BNK
+from league_tools.formats.bnk.native_hirc import NativeHIRC
 from league_tools.formats.bnk.wwiser import WwiserHIRC
 from league_tools.formats.wad.parser import WAD, WadHeaderAnalyzer
 from league_tools.formats.wpk.parser import WPK
@@ -21,6 +22,7 @@ __all__ = [
     'WadHeaderAnalyzer',
     'WPK',
     'BNK',
+    'NativeHIRC',
     'WwiserHIRC',
     'StringHash',
 ]
