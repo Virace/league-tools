@@ -1,7 +1,13 @@
-# 🐍 Beautiful is better than ugly.
-# 🐼 优美优于丑陋
-# @Author  : Codex
-# @Detail  : 原生 HIRC 二进制解析
+"""原生 HIRC 二进制解析。
+
+当前 `MusicSwitch` 相关字段布局、跳读顺序与版本分支，曾参考
+`Neinndall/AssetsManager` 的 BNK 解析实现做交叉校验，用于确认
+Wwise 145 样本在 `MusicSwitch` / `MusicTrack` / `MusicSegment`
+链路上的偏移处理。
+
+这里的参考主要用于校准二进制字段读取顺序；BNK 文件格式本身、
+`wwiser` 导出的 XML 结构以及项目内真实样本回归仍是本模块的主要事实来源。
+"""
 
 from __future__ import annotations
 
@@ -212,7 +218,9 @@ class NativeHIRC:
 
         object_id = self._read_u32(reader, "Event.object_id")
         action_count = self._read_u8(reader, "Event.action_count")
-        action_ids = [self._read_u32(reader, "Event.action_id") for _ in range(action_count)]
+        action_ids = [
+            self._read_u32(reader, "Event.action_id") for _ in range(action_count)
+        ]
         return Event(object_id=object_id, event_ids=action_ids)
 
     def _parse_action(self, reader: BinaryReader) -> Action:
@@ -303,7 +311,9 @@ class NativeHIRC:
             child_ids=child_ids,
         )
 
-    def _parse_music_segment(self, reader: BinaryReader, version: int) -> MusicSegmentCntr:
+    def _parse_music_segment(
+        self, reader: BinaryReader, version: int
+    ) -> MusicSegmentCntr:
         """解析 Music Segment。"""
 
         object_id = self._read_u32(reader, "MusicSegment.object_id")
@@ -352,7 +362,9 @@ class NativeHIRC:
                 reader, "MusicSwitch.rule_destination_count"
             )
             reader.skip(4 * destination_count)
-            reader.skip(45 if version <= 145 else 47)
+            # AssetsManager 在这里按 <=0x84 / >0x84 分支；
+            # 16.5 的 bank 版本 145 需要走 47 字节分支，否则后续字段会错位。
+            reader.skip(45 if version <= 0x84 else 47)
             has_transition = self._read_u8(reader, "MusicSwitch.has_transition")
             if has_transition:
                 reader.skip(30)

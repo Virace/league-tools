@@ -4,6 +4,7 @@
 
 - 偏工程落地与调用入口，请看 [audio_mapping.md](audio_mapping.md)
 - 偏二进制结构与字段顺序，请看本文
+- 偏 Wwise 学习成本与黑箱转白箱实验可行性，请看 [wwise_reverse_engineering_feasibility.md](wwise_reverse_engineering_feasibility.md)
 
 本文档只讨论文件之间的解析逻辑，不讨论任何特定项目中的 UI、类设计或调用链。目标是说明如何从一组 Riot / Wwise 相关文件中，还原出：
 

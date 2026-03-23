@@ -12,6 +12,18 @@
 
 如果需要更完整的 BNK/HIRC 结构或 XML 对照，再切到 `WwiserHIRC`。
 
+当前 `NativeHIRC` 与 `WwiserHIRC` 都支持以下几类基础映射链路：
+
+- `Event -> Action -> Sound`
+- `Event -> Action -> RandomContainer / SwitchContainer -> Sound`
+- `Event -> Action -> MusicSwitchContainer -> MusicRandomContainer -> MusicSegment -> MusicTrack -> source_id`
+
+最终资源 ID 与导出后的文件命名是一致的：
+
+```text
+source_id == <source_id>.wem
+```
+
 新版本采用了模块化设计，将功能分为三个核心类：
 - **AudioMapping**: 数据存储和查询
 - **AudioEventMapper**: 映射构建器
@@ -20,7 +32,7 @@
 ## 映射路径
 
 ```
-事件名称 → Event → Action → [容器层级] → Sound → 音频文件ID
+事件名称 → Event → Action → [容器层级] → Sound / MusicTrack → 音频文件ID
 ```
 
 ## 详细映射流程
@@ -87,6 +99,148 @@ SwitchCntr (HIRCType.SWITCH_CONTAINER = 6)
 └── child_ids: [44444, 55555, 66666]  # 根据切换状态选择
 ```
 
+#### 4.4 音乐切换容器 (MusicSwitchContainer)
+```
+MusicSwitchCntr (HIRCType.MUSIC_SWITCH_CONTAINER = 12)
+├── object_id: 555666777
+├── direct_parent_id: 444555666
+└── child_ids: [70001, 70002, 70003]  # 下游通常接 MusicRandom / MusicSegment
+```
+
+说明：
+
+- `MusicSwitch` 内部还存在 `rules / nodes / arguments / transition` 等结构。
+- 对事件映射来说，最关键的是先恢复可遍历的下游节点链路，再继续走到最终资源 ID。
+- `WwiserHIRC` 当前从下面这个 XML 位置提取可遍历的目标节点：
+
+```text
+.//list[@name='pNodes']//field[@name='audioNodeId']
+```
+
+对应的 `wwiser` XML 树通常是：
+
+```text
+CAkMusicSwitchCntr
+└── MusicSwitchCntrInitialValues
+    └── pNodes
+        └── audioNodeId
+```
+
+#### 4.5 音乐随机/播放列表容器 (MusicRandom / Playlist)
+```
+MusicRandomCntr (HIRCType.MUSIC_RANDOM_CONTAINER = 13)
+├── object_id: 70001
+├── direct_parent_id: 555666777
+└── child_ids: [80001, 80002]  # 下游通常接 MusicSegment
+```
+
+`WwiserHIRC` 当前从下面这个 XML 位置提取 `SegmentID` 作为 `child_ids`：
+
+```text
+.//list[@name='pPlayList']//field[@name='SegmentID']
+```
+
+对应树形位置：
+
+```text
+CAkMusicRanSeqCntr
+└── MusicRanSeqCntrInitialValues
+    └── pPlayList
+        └── SegmentID
+```
+
+#### 4.6 音乐段容器 (MusicSegment)
+```
+MusicSegmentCntr (HIRCType.MUSIC_SEGMENT_CONTAINER = 10)
+├── object_id: 80001
+├── direct_parent_id: 70001
+└── child_ids: [90001, 90002]  # 下游接 MusicTrack
+```
+
+`WwiserHIRC` 当前直接从 `MusicSegment` 内部的 `ulChildID` 字段提取子轨道：
+
+```text
+.//field[@name='ulChildID']
+```
+
+常见树形位置：
+
+```text
+CAkMusicSegment
+└── MusicSegmentInitialValues
+    ├── ulNumChilds
+    └── ulChildID
+```
+
+#### 4.7 音乐轨道 (MusicTrack)
+```
+MusicTrack (HIRCType.MUSIC_TRACK = 11)
+├── object_id: 90001
+└── file_ids: [12345, 67890]
+```
+
+说明：
+
+- `MusicTrack.file_ids` 直接对应最终音频资源 ID。
+- 也就是说，拿到这里的 `file_ids` 后，就已经完成了“事件 -> 资源 ID”的核心映射。
+- `WwiserHIRC` 当前从下面这个 XML 位置提取最终资源 ID：
+
+```text
+.//list[@name='pPlaylist']//field[@name='sourceID']
+```
+
+对应树形位置：
+
+```text
+CAkMusicTrack
+└── MusicTrackInitialValues
+    └── pPlaylist
+        └── sourceID
+```
+
+这里拿到的 `sourceID` 就是最终资源 ID，也就是：
+
+```text
+sourceID == <sourceID>.wem
+```
+
+#### 4.8 一个真实的音乐容器链路示意
+```
+Event
+  -> Action.id_ext
+  -> MusicSwitchContainer
+  -> MusicRandomContainer
+  -> MusicSegment
+  -> MusicTrack
+  -> source_id / file_id
+```
+
+以 `MUS_Map11Arcade_events.bnk` 中的 `Play_mus_map11_phase_select_Arcade` 为例，当前链路可以展开为：
+
+```text
+Event(3756353764)
+  -> Action(392790484)
+  -> ActionInitialValues.idExt = 563335300
+  -> CAkMusicSwitchCntr(563335300)
+  -> MusicSwitchCntrInitialValues.pNodes.audioNodeId
+  -> [200855215, 104162796, 393516968, ...]
+  -> CAkMusicRanSeqCntr
+  -> MusicRanSeqCntrInitialValues.pPlayList.SegmentID
+  -> [20394713, 298975373, 1053123264, 20118329, 186338091, 241377191, ...]
+  -> CAkMusicSegment
+  -> MusicSegmentInitialValues.ulChildID
+  -> [649358229, 436372912, 80968655, 958641661, 584273829, 664628860, 595731544, 129417819]
+  -> CAkMusicTrack
+  -> MusicTrackInitialValues.pPlaylist.sourceID
+  -> [293396007, 434740873, 403862142, 549272032, 228073295, 128820562, 689724454, 801502607]
+```
+
+这条链也说明了当前“新支持的音乐容器”是怎么找到资源 ID 的：
+
+1. `Action.idExt` 先进入音乐容器入口。
+2. `MusicSwitch` / `MusicRandom` / `MusicSegment` 负责继续提供可遍历的下游对象 ID。
+3. 真正落到最终资源 ID 的位置是 `MusicTrackInitialValues.pPlaylist.sourceID`。
+
 ### 5. 最终映射结果
 
 ```
@@ -146,6 +300,7 @@ class MappingAnalyzer:
 2. 对每个Action获取目标对象ID
 3. 检查目标对象类型：
    - Sound: 添加source_id到结果
+   - MusicTrack: 添加file_ids到结果
    - Container: 将所有子对象加入队列
 4. 重复直到队列为空
 ```
@@ -161,8 +316,12 @@ class MappingAnalyzer:
 |------|----------|----------|------|----------|
 | 1 | **Event** | 4 | 事件入口 | event_ids: Action ID列表 |
 | 2 | **Action** | 3 | 动作定义 | id_ext: 目标对象ID |
-| 3 | **Container** | 5,6 | 容器组织 | child_ids: 子对象ID列表 |
-| 4 | **Sound** | 2 | 音频对象 | source_id: 最终音频文件ID |
+| 3 | **Container** | 5,6 | 普通容器组织 | child_ids: 子对象ID列表 |
+| 4 | **MusicSwitchContainer** | 12 | 音乐切换入口 | child_ids: 音乐子节点ID |
+| 5 | **MusicRandom / Playlist** | 13 | 音乐随机或播放列表容器 | child_ids: Segment ID列表 |
+| 6 | **MusicSegment** | 10 | 音乐段 | child_ids: Track ID列表 |
+| 7 | **MusicTrack** | 11 | 音乐轨道 | file_ids: 最终资源ID列表 |
+| 8 | **Sound** | 2 | 普通音频对象 | source_id: 最终音频文件ID |
 
 ## 特殊情况处理
 
@@ -171,13 +330,18 @@ class MappingAnalyzer:
 Event → Action → SwitchContainer → RandomContainer → Sound
 ```
 
-### 2. 多路径映射
+### 2. 音乐容器链
+```
+Event → Action → MusicSwitchContainer → MusicRandomContainer → MusicSegment → MusicTrack
+```
+
+### 3. 多路径映射
 一个事件可能触发多个音频文件：
 ```
 "Play_vo_Aurora_Attack" → [12345, 67890, 24680]
 ```
 
-### 3. 空映射
+### 4. 空映射
 某些事件可能没有关联音频：
 ```
 "Play_UI_Click" → []  # 可能是UI音效，不在当前BNK中
@@ -194,7 +358,8 @@ Event → Action → SwitchContainer → RandomContainer → Sound
 1. **背景音乐**: 直接通过代码调用，不通过事件系统
 2. **环境音效**: 持续播放的环境声音
 3. **动态音效**: 根据游戏状态动态生成的音效
-4. **其他容器**: 尚未支持的Wwise容器类型
+4. **动作不是播放链**: 例如 Stop / State / Switch 控制类动作
+5. **容器结构已解析但无可落地资源**: 例如只拿到控制节点，没有继续到 `MusicTrack`
 
 ## 使用示例
 

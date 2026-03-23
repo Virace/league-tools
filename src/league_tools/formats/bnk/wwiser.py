@@ -25,6 +25,10 @@ from league_tools.formats.bnk.section.HIRC import (
     Action,
     Event,
     HIRCType,
+    MusicRandomCntr,
+    MusicSegmentCntr,
+    MusicSwitchCntr,
+    MusicTrack,
     RanSeqCntr,
     Sound,
     SwitchCntr,
@@ -865,14 +869,23 @@ class WwiserHIRC:
                     obj_id, obj_elem
                 )
 
-            # 其他类型暂不处理
-            elif obj_type in (
-                HIRCType.MUSIC_SEGMENT_CONTAINER,
-                HIRCType.MUSIC_TRACK,
-                HIRCType.MUSIC_SWITCH_CONTAINER,
-                HIRCType.MUSIC_RANDOM_CONTAINER,
-            ):
-                logger.debug(f"暂不支持的音乐对象类型: {obj_type.name}, ID: {obj_id}")
+            elif obj_type == HIRCType.MUSIC_SEGMENT_CONTAINER:
+                bank.music_segments[obj_id] = self._parse_music_segment(
+                    obj_id, obj_elem
+                )
+
+            elif obj_type == HIRCType.MUSIC_TRACK:
+                bank.music_tracks[obj_id] = self._parse_music_track(obj_id, obj_elem)
+
+            elif obj_type == HIRCType.MUSIC_SWITCH_CONTAINER:
+                bank.music_switch_containers[obj_id] = (
+                    self._parse_music_switch_container(obj_id, obj_elem)
+                )
+
+            elif obj_type == HIRCType.MUSIC_RANDOM_CONTAINER:
+                bank.music_playlist_containers[obj_id] = (
+                    self._parse_music_random_container(obj_id, obj_elem)
+                )
 
         except Exception as e:
             error_msg = f"处理对象时出错 (类型={obj_type.name}, ID={obj_id}): {str(e)}"
@@ -1201,4 +1214,89 @@ class WwiserHIRC:
 
         return SwitchCntr(
             object_id=obj_id, direct_parent_id=parent_id, child_ids=child_ids
+        )
+
+    def _parse_music_segment(
+        self, obj_id: int, obj_elem: etree._Element
+    ) -> MusicSegmentCntr:
+        """解析音乐段对象。"""
+
+        parent_id = self._get_int_value(obj_elem, ".//field[@name='DirectParentID']", 0)
+        child_ids = list(
+            dict.fromkeys(
+                child_id
+                for child_id in self._get_int_list(
+                    obj_elem,
+                    ".//field[@name='ulChildID']",
+                )
+                if child_id > 0
+            )
+        )
+
+        return MusicSegmentCntr(
+            object_id=obj_id,
+            direct_parent_id=parent_id,
+            child_ids=child_ids,
+        )
+
+    def _parse_music_track(self, obj_id: int, obj_elem: etree._Element) -> MusicTrack:
+        """解析音乐轨道对象。"""
+
+        file_ids = list(
+            dict.fromkeys(
+                file_id
+                for file_id in self._get_int_list(
+                    obj_elem,
+                    ".//list[@name='pPlaylist']//field[@name='sourceID']",
+                )
+                if file_id > 0
+            )
+        )
+
+        return MusicTrack(object_id=obj_id, file_ids=file_ids)
+
+    def _parse_music_switch_container(
+        self, obj_id: int, obj_elem: etree._Element
+    ) -> MusicSwitchCntr:
+        """解析音乐切换容器对象。"""
+
+        parent_id = self._get_int_value(obj_elem, ".//field[@name='DirectParentID']", 0)
+        child_ids = list(
+            dict.fromkeys(
+                child_id
+                for child_id in self._get_int_list(
+                    obj_elem,
+                    ".//list[@name='pNodes']//field[@name='audioNodeId']",
+                )
+                if child_id > 0
+            )
+        )
+
+        return MusicSwitchCntr(
+            object_id=obj_id,
+            direct_parent_id=parent_id,
+            child_ids=child_ids,
+        )
+
+    def _parse_music_random_container(
+        self, obj_id: int, obj_elem: etree._Element
+    ) -> MusicRandomCntr:
+        """解析音乐随机/序列容器对象。"""
+
+        parent_id = self._get_int_value(obj_elem, ".//field[@name='DirectParentID']", 0)
+        child_ids = list(
+            dict.fromkeys(
+                child_id
+                for child_id in self._get_int_list(
+                    obj_elem,
+                    ".//list[@name='pPlayList']//field[@name='SegmentID']",
+                )
+                if child_id > 0
+            )
+        )
+
+        return MusicRandomCntr(
+            object_id=obj_id,
+            direct_parent_id=parent_id,
+            child_ids=child_ids,
         )
