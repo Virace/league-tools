@@ -112,12 +112,15 @@ mapping = AudioEventMapper(bin_file, hirc).build_mapping()
 - WPK 参考 [Morilli/bnk-extract](https://github.com/Morilli/bnk-extract)
 - WAD 结构与部分逻辑来源于 [CommunityDragon/CDTB](https://github.com/CommunityDragon/CDTB) 与 [Pupix/lol-file-parser](https://github.com/Pupix/lol-file-parser)
 - BNK 结构参考 [Xentax Wiki](http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk))
+- `NativeHIRC` 的 `MusicSwitch` / 音乐容器读取顺序在调试阶段参考了 [Neinndall/AssetsManager](https://github.com/Neinndall/AssetsManager) 的 BNK 解析实现，用于交叉校验 Wwise 145 样本的偏移处理
+- `WwiserHIRC` 的 XML 对照与调试流程依赖 [bnnm/wwiser](https://github.com/bnnm/wwiser) 提供的导出能力；本项目将其作为外部分析工具使用，运行时需由用户自行提供可执行文件
 
 ## 维护
 
 - 维护者：**Virace**（[孤独的未知数](https://x-item.com)）
 - 开发与测试标准：[docs/development_testing.md](docs/development_testing.md)
 - 发布与维护流程：[docs/release_workflow.md](docs/release_workflow.md)
+- Wwise 黑箱转白箱可行性记录：[docs/wwise_reverse_engineering_feasibility.md](docs/wwise_reverse_engineering_feasibility.md)
 - 许可证：[GPLv3](LICENSE)
 
 ## 感谢
@@ -125,5 +128,6 @@ mapping = AudioEventMapper(bin_file, hirc).build_mapping()
 - [@Morilli](https://github.com/Morilli/bnk-extract)（bnk-extract）
 - [@Pupix](https://github.com/Pupix/lol-file-parser)（lol-file-parser）
 - [@CommunityDragon](https://github.com/CommunityDragon/CDTB)（CDTB）
+- [@Neinndall](https://github.com/Neinndall/AssetsManager)（AssetsManager，提供 BNK / 音乐容器解析对照思路）
+- [@bnnm](https://github.com/bnnm/wwiser)（wwiser，提供 BNK XML 导出与结构对照能力）
 - [@vgmstream](https://github.com/vgmstream/vgmstream)（vgmstream）
-- JetBrains 提供开发环境支持
