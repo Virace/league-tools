@@ -3,6 +3,12 @@ name: Publish Python Package
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to publish, for example v1.1.5"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,25 +19,48 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
     steps:
+      - name: Resolve release tag
+        id: input
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "tag_name=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_name=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ steps.input.outputs.tag_name }}
+          fetch-depth: 0
 
       - name: 校验 release 来源分支
         run: |
-          TARGET_BRANCH="${{ github.event.release.target_commitish }}"
-          echo "release.target_commitish=${TARGET_BRANCH}"
-          if [[ "${TARGET_BRANCH}" != "package" ]]; then
-            echo "::error title=非法发布来源::仅允许从 package 分支创建 Release。当前来源: ${TARGET_BRANCH}"
-            exit 1
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TARGET_BRANCH="${{ github.event.release.target_commitish }}"
+            echo "release.target_commitish=${TARGET_BRANCH}"
+            if [[ "${TARGET_BRANCH}" != "package" ]]; then
+              echo "::error title=非法发布来源::仅允许从 package 分支创建 Release。当前来源: ${TARGET_BRANCH}"
+              exit 1
+            fi
+          else
+            git fetch origin package --depth=1
+            TAG_COMMIT="$(git rev-list -n 1 "${{ steps.input.outputs.tag_name }}")"
+            PACKAGE_COMMIT="$(git rev-parse origin/package)"
+            echo "tag_commit=${TAG_COMMIT}"
+            echo "package_commit=${PACKAGE_COMMIT}"
+            if [[ "${TAG_COMMIT}" != "${PACKAGE_COMMIT}" ]]; then
+              echo "::error title=非法发布标签::workflow_dispatch 只能发布当前 package HEAD 上的标签"
+              exit 1
+            fi
           fi
 
       - name: 校验 tag 与 pyproject 版本一致
         id: version
         run: |
-          TAG_NAME="${{ github.event.release.tag_name }}"
+          TAG_NAME="${{ steps.input.outputs.tag_name }}"
           TAG_VERSION="${TAG_NAME#v}"
           PROJECT_VERSION="$(grep -E '^version[[:space:]]*=' pyproject.toml | head -n1 | sed -E 's/^version[[:space:]]*=[[:space:]]*\"([^\"]+)\"/\1/')"
           if [[ -z "${PROJECT_VERSION}" ]]; then
@@ -49,6 +78,7 @@ jobs:
           fi
 
           echo "version=${PROJECT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
 
   release-build:
     name: Build Distributions
@@ -59,7 +89,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs.validate-release.outputs.tag_name }}
 
       - name: Setup Python
         uses: actions/setup-python@v5

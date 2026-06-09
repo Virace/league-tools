@@ -1,0 +1,37 @@
+name: Package CI
+
+on:
+  pull_request:
+    branches:
+      - package
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Check lock file
+        run: uv lock --check
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Build distributions
+        run: uv build

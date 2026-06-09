@@ -1,0 +1,97 @@
+name: Dependabot Auto Merge
+
+on:
+  workflow_run:
+    workflows:
+      - Package CI
+    types:
+      - completed
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    name: Merge low-risk Dependabot PR
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Resolve pull request
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pulls = context.payload.workflow_run.pull_requests || [];
+            if (pulls.length !== 1) {
+              core.info(`Expected one PR, got ${pulls.length}`);
+              core.setOutput('eligible', 'false');
+              return;
+            }
+
+            const pr = pulls[0];
+            const { data } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const title = data.title || '';
+            const versionMatch = title.match(/\bfrom\s+v?(\d+)(?:\.\d+)*\s+to\s+v?(\d+)(?:\.\d+)*/i);
+            const majorUpdate = !versionMatch || versionMatch[1] !== versionMatch[2];
+            const eligible =
+              data.user?.login === 'dependabot[bot]' &&
+              data.base.ref === 'package' &&
+              data.head.ref.startsWith('dependabot/') &&
+              data.mergeable_state !== 'dirty' &&
+              !majorUpdate;
+
+            core.info(`title=${title}`);
+            core.info(`major_update=${majorUpdate}`);
+            core.setOutput('eligible', eligible ? 'true' : 'false');
+            core.setOutput('number', String(data.number));
+
+      - name: Check changed files
+        if: steps.pr.outputs.eligible == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pull_number = Number('${{ steps.pr.outputs.number }}');
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number,
+              per_page: 100,
+            });
+
+            const allowed = new Set([
+              'pyproject.toml',
+              'uv.lock',
+              '.github/dependabot.yml',
+            ]);
+            const allowedWorkflow = /^\.github\/workflows\/[^/]+\.ya?ml$/;
+            const unexpected = files
+              .map((file) => file.filename)
+              .filter((name) => !allowed.has(name) && !allowedWorkflow.test(name));
+
+            if (unexpected.length > 0) {
+              core.setFailed(`Unexpected files in Dependabot PR: ${unexpected.join(', ')}`);
+            }
+
+      - name: Merge pull request
+        if: steps.pr.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: gh pr merge "$PR_NUMBER" --squash --delete-branch --repo "${{ github.repository }}"
+
+      - name: Dispatch dependency release check
+        if: steps.pr.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run dependency-patch-release.yml \
+            --repo "${{ github.repository }}" \
+            --ref package \
+            -f dry_run=false

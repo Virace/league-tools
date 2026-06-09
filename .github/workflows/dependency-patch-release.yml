@@ -1,0 +1,185 @@
+name: Dependency Patch Release
+
+on:
+  push:
+    branches:
+      - package
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run checks and build without committing, tagging, creating a release, or publishing"
+        required: false
+        default: true
+        type: boolean
+      source_ref:
+        description: "Ref to checkout for dry-run testing"
+        required: false
+        default: "package"
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: dependency-patch-release-package
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create dependency patch release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve checkout ref
+        id: checkout-ref
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
+            echo "ref=${{ inputs.source_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=package" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout package
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.checkout-ref.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Resolve run mode
+        id: mode
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "Dry-run mode enabled."
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "Release mode enabled."
+          fi
+
+      - name: Check dependency-only push scope
+        id: scope
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SUBJECT="$(git log -1 --pretty=%s)"
+          echo "subject=${SUBJECT}"
+          if [[ "${SUBJECT}" != chore\(deps* ]]; then
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "Latest commit is not a dependency update commit."
+            exit 0
+          fi
+
+          CHANGED_FILES="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
+          echo "${CHANGED_FILES}"
+          UNEXPECTED="$(echo "${CHANGED_FILES}" | grep -Ev '^(pyproject\.toml|uv\.lock)$' || true)"
+          if [[ -n "${UNEXPECTED}" ]]; then
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "Unexpected files changed:"
+            echo "${UNEXPECTED}"
+            exit 0
+          fi
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check lock file
+        if: steps.scope.outputs.eligible == 'true'
+        run: uv lock --check
+
+      - name: Run tests
+        if: steps.scope.outputs.eligible == 'true'
+        run: uv run pytest -q
+
+      - name: Sync runtime dependency bounds
+        if: steps.scope.outputs.eligible == 'true'
+        id: sync
+        run: |
+          python .github/scripts/sync_runtime_dependency_bounds.py > dependency-bound-changes.txt
+          if [[ -s dependency-bound-changes.txt ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            cat dependency-bound-changes.txt
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No runtime dependency lower bounds changed."
+          fi
+
+      - name: Stop for dev-only or indirect-only dependency updates
+        if: steps.scope.outputs.eligible == 'true' && steps.sync.outputs.changed != 'true'
+        run: echo "No PyPI release needed."
+
+      - name: Bump patch version
+        if: steps.sync.outputs.changed == 'true'
+        id: version
+        run: |
+          VERSION="$(python .github/scripts/bump_patch_version.py)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Re-lock after pyproject changes
+        if: steps.sync.outputs.changed == 'true'
+        run: uv lock
+
+      - name: Build distributions
+        if: steps.sync.outputs.changed == 'true'
+        run: uv build
+
+      - name: Stop after dry run
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run == 'true'
+        run: |
+          echo "Dry run completed. The following changes would be committed:"
+          git diff -- pyproject.toml uv.lock
+
+      - name: Commit version and dependency bounds
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml uv.lock
+          git commit -m "chore(release): 发布依赖更新 v${{ steps.version.outputs.version }}"
+
+      - name: Create tag
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
+        run: |
+          git tag -a "${{ steps.version.outputs.tag }}" -m "release: ${{ steps.version.outputs.tag }}"
+
+      - name: Push package and tag
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
+        run: |
+          git push origin package
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --target package \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file dependency-bound-changes.txt
+
+      - name: Dispatch PyPI publish workflow
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run python-publish.yml \
+            --repo "${{ github.repository }}" \
+            --ref package \
+            -f tag_name="${{ steps.version.outputs.tag }}"
