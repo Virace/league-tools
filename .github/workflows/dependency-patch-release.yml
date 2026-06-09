@@ -138,6 +138,17 @@ jobs:
         if: steps.sync.outputs.changed == 'true'
         run: uv build
 
+      - name: Generate dry-run release notes
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run == 'true'
+        run: |
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 --match 'v*' HEAD)"
+          echo "previous_tag=${PREVIOUS_TAG}"
+          python .github/scripts/dependency_release_notes.py \
+            --old-ref "${PREVIOUS_TAG}" \
+            --new-ref WORKTREE \
+            --output dependency-release-notes.md
+          cat dependency-release-notes.md
+
       - name: Stop after dry run
         if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run == 'true'
         run: |
@@ -151,6 +162,17 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml uv.lock
           git commit -m "chore(release): 发布依赖更新 v${{ steps.version.outputs.version }}"
+
+      - name: Generate release notes
+        if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
+        run: |
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 --match 'v*' HEAD^)"
+          echo "previous_tag=${PREVIOUS_TAG}"
+          python .github/scripts/dependency_release_notes.py \
+            --old-ref "${PREVIOUS_TAG}" \
+            --new-ref HEAD \
+            --output dependency-release-notes.md
+          cat dependency-release-notes.md
 
       - name: Create tag
         if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
@@ -172,7 +194,7 @@ jobs:
             --repo "${{ github.repository }}" \
             --target package \
             --title "${{ steps.version.outputs.tag }}" \
-            --notes-file dependency-bound-changes.txt
+            --notes-file dependency-release-notes.md
 
       - name: Dispatch PyPI publish workflow
         if: steps.sync.outputs.changed == 'true' && steps.mode.outputs.dry_run != 'true'
