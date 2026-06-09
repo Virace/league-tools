@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from league_tools import AudioEventMapper, NativeHIRC, WwiserHIRC
 from league_tools.utils.wwiser import WwiserManager
 
@@ -36,6 +38,9 @@ def _get_wwiser_manager() -> WwiserManager:
 
 
 def _copy_music_switch_fixture(tmp_path: Path) -> Path:
+    if not MUS_MAP11ARCADE_EVENTS_BNK.exists():
+        pytest.skip(f"未找到音乐切换样本：{MUS_MAP11ARCADE_EVENTS_BNK}")
+
     target = tmp_path / MUS_MAP11ARCADE_EVENTS_BNK.name
     target.write_bytes(MUS_MAP11ARCADE_EVENTS_BNK.read_bytes())
     return target
