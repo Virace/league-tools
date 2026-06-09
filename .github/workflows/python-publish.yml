@@ -31,7 +31,7 @@ jobs:
           fi
 
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.input.outputs.tag_name }}
           fetch-depth: 0
@@ -87,7 +87,7 @@ jobs:
       - validate-release
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.validate-release.outputs.tag_name }}
 
