@@ -1,12 +1,12 @@
 [project]
 name = "league-tools"
-version = "1.1.4"
+version = "1.1.5"
 description = "WAD、BIN、BNK、WPK文件简单处理"
 authors = [{ name = "Virace", email = "Virace@aliyun.com" }]
 keywords = ["league", "wad", "bnk"]
 dependencies = [
     "xxhash>=3.7.0",
-    "loguru>=0.7.2",
+    "loguru>=0.7.3",
     "zstd>=1.5.7.3",
     "lxml>=6.1.1",
     "quick-xmltodict>=0.1.3",
