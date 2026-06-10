@@ -10,20 +10,26 @@ updates:
       time: "10:00"
       timezone: "Asia/Shanghai"
     open-pull-requests-limit: 5
+    groups:
+      runtime-dependencies:
+        patterns:
+          - "xxhash"
+          - "loguru"
+          - "zstd"
+          - "lxml"
+          - "quick-xmltodict"
+          - "urllib3"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        patterns:
+          - "psutil"
+          - "pytest"
+        update-types:
+          - "minor"
+          - "patch"
     commit-message:
       prefix: "chore"
       prefix-development: "chore"
-      include: "scope"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    target-branch: "package"
-    schedule:
-      interval: "weekly"
-      day: "wednesday"
-      time: "10:20"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "chore"
       include: "scope"

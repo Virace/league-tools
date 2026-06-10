@@ -38,21 +38,44 @@ jobs:
             });
 
             const title = data.title || '';
+            const titleLower = title.toLowerCase();
+            const headRef = data.head.ref || '';
+            const labels = (data.labels || []).map((label) => label.name || '');
+            const uvUpdate = headRef.startsWith('dependabot/uv/') || labels.includes('python:uv');
+            const runtimeGroupUpdate =
+              headRef.includes('/runtime-dependencies') ||
+              titleLower.includes('runtime-dependencies');
+            const devUpdate =
+              titleLower.includes('(deps-dev)') ||
+              headRef.includes('/development-dependencies') ||
+              headRef.includes('/dev-dependencies') ||
+              titleLower.includes('development-dependencies') ||
+              titleLower.includes('dev-dependencies');
             const versionMatch = title.match(/\bfrom\s+v?(\d+)(?:\.\d+)*\s+to\s+v?(\d+)(?:\.\d+)*/i);
-            const majorUpdate = !versionMatch || versionMatch[1] !== versionMatch[2];
+            const majorUpdate = runtimeGroupUpdate
+              ? false
+              : !versionMatch || versionMatch[1] !== versionMatch[2];
             const eligible =
               data.user?.login === 'dependabot[bot]' &&
+              uvUpdate &&
+              runtimeGroupUpdate &&
               data.base.ref === 'package' &&
-              data.head.ref.startsWith('dependabot/') &&
+              headRef.startsWith('dependabot/') &&
               data.mergeable_state !== 'dirty' &&
+              !devUpdate &&
               !majorUpdate;
 
             core.info(`title=${title}`);
+            core.info(`head_ref=${headRef}`);
+            core.info(`uv_update=${uvUpdate}`);
+            core.info(`runtime_group_update=${runtimeGroupUpdate}`);
+            core.info(`dev_update=${devUpdate}`);
             core.info(`major_update=${majorUpdate}`);
             core.setOutput('eligible', eligible ? 'true' : 'false');
             core.setOutput('number', String(data.number));
 
       - name: Check changed files
+        id: files
         if: steps.pr.outputs.eligible == 'true'
         uses: actions/github-script@v9
         with:
@@ -65,33 +88,26 @@ jobs:
               per_page: 100,
             });
 
-            const allowed = new Set([
-              'pyproject.toml',
-              'uv.lock',
-              '.github/dependabot.yml',
-            ]);
-            const allowedWorkflow = /^\.github\/workflows\/[^/]+\.ya?ml$/;
+            const changed = files.map((file) => file.filename);
+            const allowed = new Set(['pyproject.toml', 'uv.lock']);
             const unexpected = files
               .map((file) => file.filename)
-              .filter((name) => !allowed.has(name) && !allowedWorkflow.test(name));
+              .filter((name) => !allowed.has(name));
 
             if (unexpected.length > 0) {
               core.setFailed(`Unexpected files in Dependabot PR: ${unexpected.join(', ')}`);
             }
+            if (!changed.includes('pyproject.toml')) {
+              core.info('Dependabot PR does not update pyproject.toml; leaving it open.');
+            }
+            core.setOutput(
+              'has_pyproject',
+              changed.includes('pyproject.toml') ? 'true' : 'false'
+            );
 
       - name: Merge pull request
-        if: steps.pr.outputs.eligible == 'true'
+        if: steps.pr.outputs.eligible == 'true' && steps.files.outputs.has_pyproject == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: gh pr merge "$PR_NUMBER" --squash --delete-branch --repo "${{ github.repository }}"
-
-      - name: Dispatch dependency release check
-        if: steps.pr.outputs.eligible == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh workflow run dependency-patch-release.yml \
-            --repo "${{ github.repository }}" \
-            --ref package \
-            -f dry_run=false

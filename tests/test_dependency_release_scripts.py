@@ -18,6 +18,27 @@ def _load_script(name: str) -> ModuleType:
     return module
 
 
+def test_dependency_automation_config_groups_runtime_and_blocks_dev_updates() -> None:
+    dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    automerge = (ROOT / ".github" / "workflows" / "dependabot-automerge.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'package-ecosystem: "github-actions"' not in dependabot
+    assert "runtime-dependencies:" in dependabot
+    for name in ["xxhash", "loguru", "zstd", "lxml", "quick-xmltodict", "urllib3"]:
+        assert f'- "{name}"' in dependabot
+    assert "development-dependencies:" in dependabot
+    for name in ["psutil", "pytest"]:
+        assert f'- "{name}"' in dependabot
+
+    assert "runtimeGroupUpdate" in automerge
+    assert "runtimeGroupUpdate &&" in automerge
+    assert "devUpdate" in automerge
+    assert "has_pyproject" in automerge
+    assert "dependency-patch-release.yml" not in automerge
+
+
 def test_sync_runtime_dependency_bounds_only_updates_project_dependencies(
     tmp_path: Path,
 ) -> None:
