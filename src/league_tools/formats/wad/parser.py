@@ -11,6 +11,7 @@
 # https://github.com/CommunityDragon/CDTB/blob/master/cdtb/wad.py
 
 import gzip
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import AnyStr, Callable, Dict, List, Optional, Union
@@ -20,7 +21,18 @@ import zstd
 from loguru import logger
 
 from league_tools.core import BinaryReader
+from league_tools.core.binary import BinaryWriter
 from league_tools.core.section import SectionNoId
+from league_tools.formats.wad.builder import (
+    TYPE_RAW,
+    V34_ENTRY_SIZE,
+    V34_HEADER_SIZE,
+    WAD_MAGIC,
+    WAD_VERSION,
+    compress_for_store,
+    entry_checksum,
+    pack_entry_v34,
+)
 from league_tools.utils.type_hints import StrPath
 
 
@@ -43,7 +55,8 @@ class WADSection:
     :param type: 文件类型，指示文件数据的存储或压缩方式。
     :param duplicate: 是否是重复的文件条目。默认为 False。
     :param first_subchunk_index: 如果文件被分割为子块，则表示第一个子块在子块表中的索引。默认为 None。
-    :param sha256: 文件的 SHA-256 哈希值的前 8 个字节，用于完整性验证。默认为 None。
+    :param sha256: 条目校验和。历史命名沿用 sha256，实际语义为 xxh3_64(条目存储字节)。
+                   默认为 None。
     """
 
     path_hash: int
@@ -175,54 +188,30 @@ class WAD(WadHeaderAnalyzer):
     @staticmethod
     def get_hash(path: str) -> int:
         """
-        计算给定路径的哈希值（旧版兼容，默认 xxh3_64）。
-
-        注意：
-        - 游戏数据 WAD v3.4+ 使用 xxh64。
-        - 本方法为向后兼容旧调用，仍保持 xxh3_64。
-        - 在解包流程中应优先使用实例方法 `_get_hash_for_path()`，
-          由 WAD 版本自动选择正确算法。
-
-        :param path: 文件路径字符串。
-        :return: 64位哈希值。
-        """
-        hash_value = xxhash.xxh3_64_intdigest(path.lower().encode("utf-8"))
-        logger.debug(f"计算路径哈希(legacy_xxh3): {path} -> {hash_value:x}")
-        return hash_value
-
-    @staticmethod
-    def get_hash_v34(path: str) -> int:
-        """
-        计算给定路径的哈希值（WAD v3.4+，xxh64）。
+        计算给定路径的哈希值（小写路径的 xxh64，所有 WAD 版本一致）。
 
         :param path: 文件路径字符串。
         :return: 64位哈希值。
         """
         hash_value = xxhash.xxh64_intdigest(path.lower().encode("utf-8"))
-        logger.debug(f"计算路径哈希(v34_xxh64): {path} -> {hash_value:x}")
+        logger.debug(f"计算路径哈希: {path} -> {hash_value:x}")
         return hash_value
 
-    def _use_v34_hash(self) -> bool:
+    @staticmethod
+    def get_hash_v34(path: str) -> int:
         """
-        当前WAD是否应使用 v3.4+ 哈希算法（xxh64）。
+        同 get_hash，保留用于兼容旧调用。
+
+        :param path: 文件路径字符串。
+        :return: 64位哈希值。
         """
-        return self.version[0] == 3 and self.version[1] > 3
+        return WAD.get_hash(path)
 
     def _get_hash_for_path(self, path: str) -> int:
         """
-        根据当前WAD版本选择路径哈希算法。
-
-        - v3.4+ -> xxh64
-        - 其余版本 -> xxh3_64（历史兼容）
+        计算条目路径哈希。
         """
-        if self._use_v34_hash():
-            hash_value = self.get_hash_v34(path)
-            logger.debug(f"使用v3.4+哈希算法(xxh64): {path} -> {hash_value:x}")
-            return hash_value
-
-        hash_value = self.get_hash(path)
-        logger.debug(f"使用旧版哈希算法(xxh3_64): {path} -> {hash_value:x}")
-        return hash_value
+        return self.get_hash(path)
 
     def _decompress_subchunks(self, file: WADSection, data: bytes) -> bytes:
         """
@@ -427,3 +416,113 @@ class WAD(WadHeaderAnalyzer):
 
         logger.debug(f"哈希提取完成: 匹配{match_count}/{len(self.files)}, 成功提取{len(ret)}")
         return ret
+
+    def rebuild(self, replacements: Dict[Union[str, int], Union[bytes, StrPath]],
+                output: Optional[StrPath] = None, *, strict: bool = True) -> Path:
+        """
+        以 v3.4 全量重写 WAD 并替换指定条目。
+
+        未替换条目按存储字节原样搬运(不解压重压)，type/subchunk/checksum 保留，
+        仅重算 offset，旧文件中共享数据的条目在新文件中继续共享；
+        替换条目沿用原条目的存储方式(原条目未压缩则原样存储，其余按
+        .bnk/.wpk 原样、其他 zstd)，重算 size/checksum，subchunk 字段清零。
+        输出版本恒为 3.4。
+
+        :param replacements: {WAD内部路径 或 path_hash: bytes 或本地文件路径}
+        :param output: 输出路径；None 表示覆盖源文件(仅当 WAD 从文件路径打开时可用)，
+                       覆盖源文件后本对象会自动重新打开，可继续使用
+        :param strict: True 时任一替换目标未命中抛 KeyError；False 时跳过并告警
+        :return: 输出文件路径
+        """
+        file_index = {item.path_hash: item for item in self.files}
+
+        resolved: Dict[int, tuple] = {}
+        missing = []
+        for key, data in replacements.items():
+            name_hint = ''
+            if isinstance(key, str):
+                name_hint = key
+                path_hash = self.get_hash(key)
+            else:
+                path_hash = key
+            if path_hash not in file_index:
+                missing.append(key)
+                continue
+            if not isinstance(data, bytes):
+                data = Path(data).read_bytes()
+            resolved[path_hash] = (data, name_hint)
+
+        if missing:
+            message = f'替换目标不存在: {missing}'
+            if strict:
+                raise KeyError(message)
+            logger.warning(message)
+
+        src_path = getattr(self._data.buffer, 'name', None)
+        if output is None:
+            if not src_path:
+                raise ValueError('WAD 非文件来源, rebuild 必须指定 output')
+            output = src_path
+        output = Path(output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = output.with_name(output.name + '.tmp')
+
+        entries = sorted(self.files, key=lambda f: f.path_hash)
+        logger.debug(f'开始重写WAD: {len(entries)} 个条目, 替换 {len(resolved)} 个')
+        try:
+            with BinaryWriter(tmp_path) as writer:
+                writer.bytes(WAD_MAGIC)
+                writer.customize('<BB', *WAD_VERSION)
+                writer.bytes(b'\x00' * 256)
+                writer.customize('<Q', 0)
+                writer.customize('<L', len(entries))
+                writer.bytes(b'\x00' * (V34_ENTRY_SIZE * len(entries)))
+
+                toc = []
+                new_dedup: Dict[int, int] = {}  # 新数据 checksum -> 新 offset
+                # (旧 offset, 存储大小) -> 新 offset。空条目可能与真实数据共享
+                # 同一 offset,仅按 offset 去重会让真实条目指向未写入的数据
+                moved: Dict[tuple, int] = {}
+                for entry in entries:
+                    if entry.path_hash in resolved:
+                        data, name_hint = resolved[entry.path_hash]
+                        compression = 'raw' if entry.type == TYPE_RAW else 'auto'
+                        stored, entry_type = compress_for_store(data, name_hint, compression)
+                        checksum = entry_checksum(stored)
+                        offset = new_dedup.get(checksum)
+                        if offset is None:
+                            offset = writer.tell()
+                            writer.bytes(stored)
+                            new_dedup[checksum] = offset
+                        toc.append(pack_entry_v34(entry.path_hash, offset, len(stored),
+                                                  len(data), entry_type, 0, 0, checksum))
+                    else:
+                        moved_key = (entry.offset, entry.compressed_size)
+                        offset = moved.get(moved_key)
+                        if offset is None:
+                            self._data.seek(entry.offset, 0)
+                            stored = self._data.bytes(entry.compressed_size)
+                            offset = writer.tell()
+                            writer.bytes(stored)
+                            moved[moved_key] = offset
+                        toc.append(pack_entry_v34(entry.path_hash, offset,
+                                                  entry.compressed_size, entry.size,
+                                                  entry.type, entry.subchunk_count,
+                                                  entry.first_subchunk_index or 0,
+                                                  entry.sha256 or 0))
+
+                writer.seek(V34_HEADER_SIZE)
+                writer.bytes(b''.join(toc))
+
+            overwrite_source = bool(src_path) and output.exists() \
+                and os.path.samefile(src_path, output)
+            if overwrite_source:
+                self._data.close()
+            os.replace(tmp_path, output)
+            if overwrite_source:
+                self.__init__(str(output))
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+        logger.debug(f'重写完成: {output}')
+        return output
