@@ -13,6 +13,7 @@ from league_tools import (
     NativeHIRC,
     WPK,
     WAD,
+    WADBuilder,
     WwiserHIRC,
     WwiserManager,
     AudioEventMapper,
@@ -53,7 +54,27 @@ bin_file = BIN("path/to/skin.bin")
 audio_groups = bin_file.data
 ```
 
-## 3. 日志控制（默认关闭）
+## 3. WAD 打包与替换
+
+输出固定为 v3.4，详细行为见 [WAD 解析](formats_wad.md)。
+
+```python
+from league_tools import WAD, WADBuilder
+
+# 从零创建 WAD
+WADBuilder() \
+    .add("plugins/demo/config.json", b'{"enabled": true}') \
+    .save("demo.wad.client")
+
+# 打开已有 WAD，替换其中的文件（output 省略则覆盖源文件）
+wad = WAD("path/to/archive.wad.client")
+wad.rebuild(
+    {"plugins/demo/config.json": b'{"enabled": false}'},
+    output="archive.modified.wad.client",
+)
+```
+
+## 4. 日志控制（默认关闭）
 
 库默认关闭 `league_tools` 命名空间日志输出。
 
@@ -66,7 +87,7 @@ print(is_logging_enabled())  # True
 disable_logging()
 ```
 
-## 4. 进阶文档
+## 5. 进阶文档
 
 - [格式总览](formats_overview.md)
 - [WAD 解析](formats_wad.md)

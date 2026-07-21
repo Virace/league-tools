@@ -5,6 +5,7 @@ import struct
 from pathlib import Path
 
 import pytest
+import xxhash
 import zstd
 
 from league_tools.formats.wad.parser import MalformedSubchunkError, WAD, WADSection
@@ -17,27 +18,17 @@ def _new_wad(version: list[int] | None = None) -> WAD:
     return wad
 
 
-def test_wad_hash_algorithm_switches_by_version(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wad_hash_is_xxh64_for_all_versions() -> None:
+    expected = xxhash.xxh64_intdigest(b"a/b")
+
     wad = _new_wad([3, 4])
-    calls: list[str] = []
-
-    def fake_v34(path: str) -> int:
-        calls.append(f"v34:{path}")
-        return 111
-
-    def fake_legacy(path: str) -> int:
-        calls.append(f"legacy:{path}")
-        return 222
-
-    monkeypatch.setattr(WAD, "get_hash_v34", staticmethod(fake_v34))
-    monkeypatch.setattr(WAD, "get_hash", staticmethod(fake_legacy))
-
-    assert wad._get_hash_for_path("A/B") == 111
-    assert calls == ["v34:A/B"]
+    assert wad._get_hash_for_path("A/B") == expected
 
     wad.version = [3, 3]
-    assert wad._get_hash_for_path("A/B") == 222
-    assert calls[-1] == "legacy:A/B"
+    assert wad._get_hash_for_path("A/B") == expected
+
+    assert WAD.get_hash("A/B") == expected
+    assert WAD.get_hash_v34("A/B") == expected
 
 
 def test_decompress_subchunks_supports_plain_and_zstd() -> None:

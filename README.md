@@ -78,6 +78,27 @@ enable_logging()
 disable_logging()
 ```
 
+WAD 打包与替换（输出固定 v3.4）：
+
+```python
+from league_tools import WAD, WADBuilder
+
+# 从零创建
+WADBuilder() \
+    .add('plugins/demo/config.json', b'{"enabled": true}') \
+    .save('demo.wad.client')
+
+# 打开已有 WAD，替换其中的文件后另存（output 省略则覆盖源文件）
+wad = WAD('path/to/archive.wad.client')
+wad.rebuild(
+    {'plugins/demo/config.json': b'{"enabled": false}'},
+    output='archive.modified.wad.client',
+)
+```
+
+说明：`.bnk`/`.wpk` 原样存储，其余 zstd 压缩；头部签名置零（客户端不校验）。
+注意游戏客户端更新/修复会按清单还原被修改的 WAD。
+
 详细示例与格式文档：
 
 - [基础 API 与快速上手](docs/api_basics.md)
@@ -111,6 +132,7 @@ mapping = AudioEventMapper(bin_file, hirc).build_mapping()
 
 - WPK 参考 [Morilli/bnk-extract](https://github.com/Morilli/bnk-extract)
 - WAD 结构与部分逻辑来源于 [CommunityDragon/CDTB](https://github.com/CommunityDragon/CDTB) 与 [Pupix/lol-file-parser](https://github.com/Pupix/lol-file-parser)
+- WAD v3.4 写入格式与存储策略对照了 [LeagueToolkit/cslol-manager](https://github.com/LeagueToolkit/cslol-manager)、[LeagueToolkit/LeagueToolkit](https://github.com/LeagueToolkit/LeagueToolkit) 与 [tarngaina/ltMAO](https://github.com/tarngaina/ltMAO) 的实现做佐证，未复制其代码
 - BNK 结构参考 [Xentax Wiki](http://wiki.xentax.com/index.php/Wwise_SoundBank_(*.bnk))
 - `NativeHIRC` 的 `MusicSwitch` / 音乐容器读取顺序在调试阶段参考了 [Neinndall/AssetsManager](https://github.com/Neinndall/AssetsManager) 的 BNK 解析实现，用于交叉校验 Wwise 145 样本的偏移处理
 - `WwiserHIRC` 的 XML 对照与调试流程依赖 [bnnm/wwiser](https://github.com/bnnm/wwiser) 提供的导出能力；本项目将其作为外部分析工具使用，运行时需由用户自行提供可执行文件

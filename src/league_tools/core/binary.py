@@ -11,11 +11,11 @@ import io
 import os
 import struct
 from io import BytesIO
-from typing import Optional, Any, BinaryIO, cast
+from typing import Optional, Any, BinaryIO, Union, cast
 
 from loguru import logger
 
-from league_tools.utils.type_hints import BinaryData, DataSource
+from league_tools.utils.type_hints import BinaryData, DataSource, StrPath
 
 
 class BinaryReader:
@@ -268,4 +268,98 @@ class BinaryReader:
         """
         析构函数，确保资源被释放
         """
+        self.close()
+
+
+class BinaryWriter:
+    """
+    二进制数据写入器，与 BinaryReader 对称。
+
+    target 为 None 时写入内存(BytesIO)，可用 getvalue() 取回全部字节；
+    为路径时创建/截断文件写入；为文件对象时直接写入。
+    close() 统一关闭底层 buffer，与 BinaryReader 行为一致。
+    """
+
+    def __init__(self, target: Union[StrPath, BinaryIO, None] = None):
+        """
+        初始化二进制写入器
+
+        :param target: None(内存)、文件路径或可写文件对象
+        """
+        self._closed = False
+        self.buffer = None
+
+        if target is None:
+            self.buffer = BytesIO()
+        elif isinstance(target, (str, os.PathLike)):
+            self.buffer = io.open(target, 'wb+')
+        else:
+            self.buffer = cast(BinaryIO, target)
+
+    def customize(self, fmt: str, *values: Any) -> int:
+        """
+        按 struct 格式打包并写入
+
+        :param fmt: 结构体格式字符串
+        :param values: 与格式对应的值
+        :return: 写入的字节数
+        """
+        data = struct.pack(fmt, *values)
+        return self.buffer.write(data)
+
+    def bytes(self, data: bytes) -> int:
+        """
+        写入原始字节
+
+        :param data: 要写入的字节数据
+        :return: 写入的字节数
+        """
+        return self.buffer.write(data)
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        """
+        移动写入指针位置
+
+        :param offset: 偏移量
+        :param whence: 位置参考：0=文件开始，1=当前位置，2=文件末尾
+        :return: 移动后的位置
+        """
+        return self.buffer.seek(offset, whence)
+
+    def tell(self) -> int:
+        """
+        当前写入位置
+        """
+        return self.buffer.tell()
+
+    def getvalue(self) -> bytes:
+        """
+        取回内存模式下已写入的全部字节
+
+        :raises TypeError: 非内存(BytesIO)模式调用时
+        """
+        if not isinstance(self.buffer, BytesIO):
+            raise TypeError('仅内存写入模式支持 getvalue')
+        return self.buffer.getvalue()
+
+    def close(self) -> None:
+        """
+        关闭底层资源
+        """
+        if hasattr(self, 'buffer') and self.buffer is not None and not self._closed:
+            try:
+                self.buffer.close()
+            except Exception as e:
+                logger.error(f"关闭文件时出错: {e}")
+            finally:
+                self.buffer = None
+                self._closed = True
+
+    def __enter__(self) -> 'BinaryWriter':
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    def __del__(self) -> None:
         self.close()

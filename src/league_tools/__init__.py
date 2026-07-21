@@ -14,6 +14,7 @@ from .formats.bin.parser import BIN
 from .formats.bnk.parser import BNK
 from .formats.bnk.native_hirc import NativeHIRC
 from .formats.bnk.wwiser import WwiserHIRC
+from .formats.wad.builder import WADBuilder
 from .formats.wad.parser import WAD
 from .formats.wpk.parser import WPK
 from .tools.audio_mapper import AudioEventMapper, AudioMapping, MappingAnalyzer
@@ -24,6 +25,7 @@ __all__ = [
     "BNK",
     "WPK",
     "WAD",
+    "WADBuilder",
     "NativeHIRC",
     "WwiserHIRC",
     "WwiserManager",
