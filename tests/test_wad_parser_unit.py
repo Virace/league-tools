@@ -1,14 +1,20 @@
+"""验证 WAD 提取、压缩分支与共享读取的内容一致性。"""
+
 from __future__ import annotations
 
 import gzip
 import struct
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 import xxhash
 import zstd
 
-from league_tools.formats.wad.parser import MalformedSubchunkError, WAD, WADSection
+from league_tools.formats.wad.builder import WADBuilder
+from league_tools.formats.wad.parser import WAD, MalformedSubchunkError, WADSection
 
 
 def _new_wad(version: list[int] | None = None) -> WAD:
@@ -58,9 +64,7 @@ def test_decompress_subchunks_supports_plain_and_zstd() -> None:
     assert wad._decompress_subchunks(zstd_section, zstd_blob) == raw_zstd
 
 
-def test_extract_by_section_handles_all_main_branches(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_extract_by_section_handles_all_main_branches(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     wad = _new_wad()
 
     # type=0 不压缩
@@ -81,10 +85,7 @@ def test_extract_by_section_handles_all_main_branches(
     # type=4 子块
     section_subchunk = WADSection(4, 0, 5, 5, 0x14)
     monkeypatch.setattr(wad, "_decompress_subchunks", lambda *_args, **_kwargs: b"12345")
-    assert (
-        wad.extract_by_section(section_subchunk, tmp_path / "subchunk.bin", raw=True, data=b"dummy")
-        == b"12345"
-    )
+    assert wad.extract_by_section(section_subchunk, tmp_path / "subchunk.bin", raw=True, data=b"dummy") == b"12345"
 
     # type=4 子块异常 -> 返回None
     def _raise_malformed(*_args, **_kwargs):
@@ -110,9 +111,7 @@ def test_extract_requires_out_dir_when_raw_is_false() -> None:
         wad.extract(["assets/test.bin"], out_dir="", raw=False)
 
 
-def test_extract_uses_hash_index_and_callable_output(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_extract_uses_hash_index_and_callable_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     wad = _new_wad()
     wad.files = [WADSection(path_hash=123, offset=0, compressed_size=1, size=1, type=0)]
 
@@ -132,3 +131,43 @@ def test_extract_uses_hash_index_and_callable_output(
         raw=False,
     )
     assert results == ["ok:exists.bin", None]
+
+
+def test_shared_wad_reads_keep_each_entries_bytes() -> None:
+    """两个读取交错定位时，各条目仍返回自己的完整内容。"""
+    payloads = {"a.bnk": b"A" * 4096, "b.bnk": b"B" * 8192}
+
+    class InterleavedStream(BytesIO):
+        """让未保护的两次定位发生交错，带锁读取则允许首个等待到期。"""
+
+        armed = False
+
+        def seek(self, offset: int, whence: int = 0) -> int:
+            """仅在目录解析后、首个条目读取时等待另一线程定位。"""
+            position = super().seek(offset, whence)
+            if self.armed:
+                if not first_seek.is_set():
+                    first_seek.set()
+                    second_seek.wait(0.1)
+                else:
+                    second_seek.set()
+            return position
+
+    builder = WADBuilder()
+    for path, data in payloads.items():
+        builder.add(path, data)
+    first_seek = threading.Event()
+    second_seek = threading.Event()
+    stream = InterleavedStream(builder.to_bytes())
+    wad = WAD(stream)
+    stream.armed = True
+    start = threading.Barrier(2)
+
+    def extract(path: str) -> bytes:
+        """让两个调用同时进入同一 WAD 的公开提取入口。"""
+        start.wait(timeout=2)
+        return wad.extract([path], raw=True)[0]
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(extract, payloads))
+    assert results == list(payloads.values())

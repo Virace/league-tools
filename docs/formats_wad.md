@@ -124,6 +124,12 @@ wad.extract(paths, out_dir='extracted/')
 datas = wad.extract(paths, raw=True)   # 未命中的路径对应 None
 ```
 
+同一个 `WAD` 可用于多个线程的只读提取：条目的 `seek/read` 使用每个对象独立的锁，
+解压和输出不持有读取锁。`WAD.thread_safe_reads` 为 `True` 时声明此能力，旧版本未提供该属性。
+多个线程写同一输出路径仍由调用方协调。
+路径 hash 索引按对象复用，原位 `rebuild` 后重新建立；提取期间不得修改 `files`、
+重建源 WAD 或关闭底层流。
+
 ### 按条目提取
 
 ```python
