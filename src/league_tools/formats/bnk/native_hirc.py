@@ -22,6 +22,7 @@ from league_tools.formats.bnk.section.HIRC import (
     Action,
     Event,
     HIRCType,
+    LayerCntr,
     MusicRandomCntr,
     MusicSegmentCntr,
     MusicSwitchCntr,
@@ -52,6 +53,7 @@ class NativeBank:
     music_playlist_containers: Dict[int, MusicRandomCntr] = field(default_factory=dict)
     music_switch_containers: Dict[int, MusicSwitchCntr] = field(default_factory=dict)
     music_tracks: Dict[int, MusicTrack] = field(default_factory=dict)
+    layer_containers: dict[int, LayerCntr] = field(default_factory=dict)
 
     def stats(self) -> Dict[str, int]:
         """返回当前 bank 的对象统计。"""
@@ -66,6 +68,7 @@ class NativeBank:
             "music_playlist_containers": len(self.music_playlist_containers),
             "music_switch_containers": len(self.music_switch_containers),
             "music_tracks": len(self.music_tracks),
+            "layer_containers": len(self.layer_containers),
         }
 
 
@@ -194,6 +197,11 @@ class NativeHIRC:
             bank.switch_containers[container.object_id] = container
             return
 
+        if hirc_type == HIRCType.LAYER_CONTAINER:
+            container = self._parse_layer_container(reader, version)
+            bank.layer_containers[container.object_id] = container
+            return
+
         if hirc_type == HIRCType.MUSIC_SEGMENT_CONTAINER:
             container = self._parse_music_segment(reader, version)
             bank.music_segments[container.object_id] = container
@@ -306,6 +314,16 @@ class NativeHIRC:
         reader.skip(5)
         child_ids = self._read_u32_list(reader, "SwitchContainer.child_ids")
         return SwitchCntr(
+            object_id=object_id,
+            direct_parent_id=base_params.parent_id,
+            child_ids=child_ids,
+        )
+
+    def _parse_layer_container(self, reader: BinaryReader, version: int) -> LayerCntr:
+        object_id = self._read_u32(reader, "LayerContainer.object_id")
+        base_params = self._parse_base_params(reader, version)
+        child_ids = self._read_u32_list(reader, "LayerContainer.child_ids")
+        return LayerCntr(
             object_id=object_id,
             direct_parent_id=base_params.parent_id,
             child_ids=child_ids,

@@ -147,6 +147,7 @@ manual_tests/
 raw/
 data/
 .ai_memory/
+.temp/
 .CODING_STYLE.md
 docs/todo/
 tests/fixtures/**

@@ -25,6 +25,7 @@ from league_tools.formats.bnk.section.HIRC import (
     Action,
     Event,
     HIRCType,
+    LayerCntr,
     MusicRandomCntr,
     MusicSegmentCntr,
     MusicSwitchCntr,
@@ -83,6 +84,7 @@ class WwiserBank:
         "music_playlist_containers",  # 音乐播放列表对象字典
         "music_switch_containers",  # 音乐切换对象字典
         "music_tracks",  # 音乐轨道对象字典
+        "layer_containers",
     ]
 
     def __init__(
@@ -109,6 +111,7 @@ class WwiserBank:
         self.music_playlist_containers = {}
         self.music_switch_containers = {}
         self.music_tracks = {}
+        self.layer_containers = {}
 
     def __repr__(self) -> str:
         """字符串表示"""
@@ -130,6 +133,7 @@ class WwiserBank:
             "music_playlist_containers": len(self.music_playlist_containers),
             "music_switch_containers": len(self.music_switch_containers),
             "music_tracks": len(self.music_tracks),
+            "layer_containers": len(self.layer_containers),
         }
 
 
@@ -643,6 +647,13 @@ class WwiserHIRC:
             with open(cache_path, "rb") as f:
                 cached_data = pickle.load(f)
 
+            if any(
+                not hasattr(bank, "layer_containers")
+                for bank in cached_data.banks.values()
+            ):
+                logger.debug("旧 HIRC 缓存不包含 Layer 容器，重新解析 XML")
+                return False
+
             # 更新当前对象
             self.banks = cached_data.banks
 
@@ -866,6 +877,11 @@ class WwiserHIRC:
 
             elif obj_type == HIRCType.SWITCH_CONTAINER:
                 bank.switch_containers[obj_id] = self._parse_switch_container(
+                    obj_id, obj_elem
+                )
+
+            elif obj_type == HIRCType.LAYER_CONTAINER:
+                bank.layer_containers[obj_id] = self._parse_layer_container(
                     obj_id, obj_elem
                 )
 
@@ -1213,6 +1229,22 @@ class WwiserHIRC:
         )
 
         return SwitchCntr(
+            object_id=obj_id, direct_parent_id=parent_id, child_ids=child_ids
+        )
+
+    def _parse_layer_container(
+        self, obj_id: int, obj_elem: etree._Element
+    ) -> LayerCntr:
+        parent_id = self._get_int_value(
+            obj_elem,
+            ".//object[@name='NodeBaseParams']/field[@name='DirectParentID']",
+            0,
+        )
+        child_ids = self._get_int_list(
+            obj_elem,
+            ".//object[@name='LayerCntrInitialValues']/object[@name='Children']/field[@name='ulChildID']",
+        )
+        return LayerCntr(
             object_id=obj_id, direct_parent_id=parent_id, child_ids=child_ids
         )
 

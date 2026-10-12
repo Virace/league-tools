@@ -34,6 +34,16 @@ uv run pytest -q
 
 ## 3. 测试分层与推荐执行顺序
 
+VALORANT 的 Layer/Blend 真实文件专项测试直接使用已提取的本地 BNK 和官方 wwiser 参考结果。当前不自动收集或下载 VALORANT 样本，准备方式见 [样本目录说明](../tests/fixtures/README.md)。
+
+发布前运行：
+
+```powershell
+uv run pytest -q tests/test_valorant_hirc.py --require-valorant-fixtures
+```
+
+测试覆盖真实 Layer 父子关系、两个刀具事件的媒体集合，以及旧 XML 缓存的重新解析。二进制文件、参考 XML 和生成清单均不纳入 Git 或发行包。
+
 ### 3.1 快速回归（每次改动后至少执行）
 
 ```bash

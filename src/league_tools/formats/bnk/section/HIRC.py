@@ -22,7 +22,7 @@ class HIRCType(IntEnum):
     SWITCH_CONTAINER = 6
     # ACTOR_MIXER = 7
     # BUS = 8
-    # LAYER_CONTAINER = 9
+    LAYER_CONTAINER = 9
     MUSIC_SEGMENT_CONTAINER = 10
     MUSIC_TRACK = 11
     MUSIC_SWITCH_CONTAINER = 12
@@ -104,6 +104,15 @@ class SwitchCntr:
     object_id: int
     direct_parent_id: Optional[int]
     child_ids: List[int]
+
+
+@dataclass
+class LayerCntr:
+    """Layer/Blend 容器的子对象关系。"""
+
+    object_id: int
+    direct_parent_id: int | None
+    child_ids: list[int]
 
 
 @dataclass
