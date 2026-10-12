@@ -430,6 +430,11 @@ class AudioEventMapper:
             for track_id, track_obj in getattr(bank, "music_tracks", {}).items():
                 unified_index[track_id] = ("music_track", track_obj)
 
+            for container_id, container_obj in getattr(
+                bank, "layer_containers", {}
+            ).items():
+                unified_index[container_id] = ("layer_container", container_obj)
+
         return unified_index
 
     def _find_sound_ids_for_event(self, event_id: int) -> List[int]:
@@ -479,6 +484,7 @@ class AudioEventMapper:
                 "music_segment",
                 "music_playlist_container",
                 "music_switch_container",
+                "layer_container",
             ):
                 # 容器对象：将所有子ID加入队列
                 if hasattr(obj, "child_ids"):

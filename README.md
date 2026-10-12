@@ -22,6 +22,8 @@ WAD、BIN、BNK、WPK 文件处理工具库。
 - 直接从 `events.bnk` 读取，速度明显快于 `wwiser -> XML`
 - 更适合默认映射链和批量分析
 
+现支持 Layer/Blend 容器（HIRC 9）的子对象映射，已用 Wwise 145 的真实 VALORANT BNK 与官方 wwiser 对照验证。测试代码和本地样本准备说明见 [样本目录说明](tests/fixtures/README.md)。
+
 如果你需要更完整的 BNK/HIRC 结构、XML 对照能力或调试信息，再使用 `WwiserHIRC`。
 
 ## 安装

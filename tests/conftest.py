@@ -11,6 +11,12 @@ import pytest
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("league-tools")
     group.addoption(
+        "--require-valorant-fixtures",
+        action="store_true",
+        default=False,
+        help="VALORANT 专项验证缺少本地样本时直接失败",
+    )
+    group.addoption(
         "--prepare-fixtures",
         action="store_true",
         default=False,
